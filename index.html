@@ -48,14 +48,16 @@
 
     async function apiRequest(path, method = 'GET', body = null) {
         // ОБРАТИ ВНИМАНИЕ: путь с .py
-        const res = await fetch('/api/proxy.py', {
-            method: 'POST',
-            body: JSON.stringify({ password: userPass, path, method, payload: body })
-        });
-        const data = await res.json();
-        if (res.status === 401) { localStorage.removeItem('app_p'); location.reload(); }
-        return data;
-    }
+        const res = await fetch('/api/proxy', { // БЕЗ .py в конце!
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            password: userPass,
+            path: path,
+            method: method,
+            payload: body
+        })
+    });
 
     async function handleAuth() {
         const pass = document.getElementById('auth-pass').value;
