@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/proxy",
-      "destination": "/proxy.py"
+      "destination": "/api/proxy.py"
     },
     {
       "source": "/(.*)",
