@@ -5,7 +5,6 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler
 from upstash_redis import Redis
 
-# Подключение к Redis (универсальный поиск ключей)
 def get_redis():
     url = os.environ.get("STORAGE_REST_API_URL") or os.environ.get("KV_REST_API_URL") or os.environ.get("UPSTASH_REDIS_REST_URL")
     token = os.environ.get("STORAGE_REST_API_TOKEN") or os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPSTASH_REDIS_REST_TOKEN")
@@ -29,7 +28,7 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             if not redis_client:
-                return self.send_json({"error": "Redis не подключен"}, 500)
+                return self.send_json({"error": "Redis не настроен"}, 500)
 
             content_length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(content_length).decode('utf-8'))
@@ -37,28 +36,24 @@ class handler(BaseHTTPRequestHandler):
             action = body.get('action')
             password = body.get('password')
             
-            if not password:
-                return self.send_json({"error": "Нужен пароль"}, 401)
+            if not password: return self.send_json({"error": "No password"}, 401)
 
-            # 1. Регистрация (установка Secret Key)
+            # Регистрация / Логин
             if action == 'register':
                 s_key = body.get('secret_key')
-                if not s_key: return self.send_json({"error": "Нужен Secret Key"}, 400)
+                if not s_key: return self.send_json({"error": "Secret Key required"}, 400)
                 redis_client.set(f"auth:{password}", s_key)
-                return self.send_json({"status": "ok", "message": "Пароль привязан"})
+                return self.send_json({"status": "ok"})
 
-            # 2. Проверка пароля и получение Secret Key
             stored_secret = redis_client.get(f"auth:{password}")
-            if not stored_secret:
-                return self.send_json({"error": "Неверный пароль"}, 401)
+            if not stored_secret: return self.send_json({"error": "Invalid password"}, 401)
             
             if isinstance(stored_secret, bytes):
                 stored_secret = stored_secret.decode('utf-8')
             
-            if action == 'login':
-                return self.send_json({"status": "ok"})
+            if action == 'login': return self.send_json({"status": "ok"})
 
-            # 3. Прокси-запрос к твоему основному API (95.181...)
+            # Прокси к Seller API 
             path = body.get('path')
             method = body.get('method', 'GET')
             payload = body.get('payload')
@@ -67,6 +62,7 @@ class handler(BaseHTTPRequestHandler):
             
             encoded_data = json.dumps(payload).encode('utf-8') if payload else None
 
+            # Важно: Передаем X-Seller-Key в заголовке 
             req = urllib.request.Request(
                 target_url,
                 data=encoded_data,
@@ -81,10 +77,9 @@ class handler(BaseHTTPRequestHandler):
                 with urllib.request.urlopen(req, timeout=15) as response:
                     return self.send_json(json.loads(response.read().decode('utf-8')))
             except urllib.error.HTTPError as e:
-                # Прокидываем ошибку от твоего сервера (например, 400 если ключ уже есть)
-                err_body = e.read().decode('utf-8')
-                try: return self.send_json(json.loads(err_body), e.code)
-                except: return self.send_json({"error": f"Сервер ответил {e.code}"}, e.code)
+                return self.send_json({"error": f"API Error {e.code}"}, e.code)
+            except Exception as e:
+                return self.send_json({"error": str(e)}, 502)
 
         except Exception as e:
-            return self.send_json({"error": f"Ошибка прокси: {str(e)}"}, 500)
+            return self.send_json({"error": str(e)}, 500)
