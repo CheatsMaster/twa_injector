@@ -1,15 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "proxy.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
+  "functions": {
+    "proxy.py": {
+      "runtime": "@vercel/python"
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/api/proxy",
