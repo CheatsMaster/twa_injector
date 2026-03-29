@@ -5,11 +5,10 @@ from http.server import BaseHTTPRequestHandler
 from upstash_redis import Redis
 
 def get_redis_client():
-    # Проверяем все возможные префиксы Vercel
     url = os.environ.get("STORAGE_REST_API_URL") or os.environ.get("KV_REST_API_URL") or os.environ.get("UPSTASH_REDIS_REST_URL")
     token = os.environ.get("STORAGE_REST_API_TOKEN") or os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPSTASH_REDIS_REST_TOKEN")
     if not url or not token:
-        raise ValueError("Redis credentials missing in Environment Variables")
+        return None
     return Redis(url=url, token=token)
 
 redis = get_redis_client()
@@ -29,6 +28,9 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            if not redis:
+                return self.send_json({"error": "Redis not connected. Check Vercel Storage settings."}, 500)
+
             content_length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             
@@ -36,48 +38,56 @@ class handler(BaseHTTPRequestHandler):
             password = body.get('password')
             
             if not password:
-                return self.send_json({"error": "Password required"}, 401)
+                return self.send_json({"error": "No password provided"}, 401)
 
-            # --- РЕГИСТРАЦИЯ ---
+            # --- Регистрация ---
             if action == 'register':
                 s_key = body.get('secret_key')
-                if not s_key:
-                    return self.send_json({"error": "Secret Key required"}, 400)
+                if not s_key: return self.send_json({"error": "Secret Key required"}, 400)
                 redis.set(f"auth:{password}", s_key)
                 return self.send_json({"status": "ok", "message": "Registered"})
 
-            # --- ПРОВЕРКА ПАРОЛЯ ---
+            # --- Получение ключа из базы ---
             stored_secret = redis.get(f"auth:{password}")
             if not stored_secret:
-                return self.send_json({"error": "Invalid password"}, 401)
+                return self.send_json({"error": "Wrong password"}, 401)
 
+            # Если это байты (иногда Redis возвращает bytes), декодируем
+            if isinstance(stored_secret, bytes):
+                stored_secret = stored_secret.decode('utf-8')
+            
             if action == 'login':
                 return self.send_json({"status": "ok"})
 
-            # --- ПРОКСИРОВАНИЕ ---
+            # --- Запрос к твоему API ---
             path = body.get('path', '/api/seller/keys')
             method = body.get('method', 'GET')
             payload = body.get('payload')
 
             target_url = f"http://95.181.213.84:8081{path}"
             
+            # Важно: превращаем stored_secret в чистую строку
+            token_str = str(stored_secret).strip()
+
             req = urllib.request.Request(
                 target_url,
                 data=json.dumps(payload).encode('utf-8') if payload else None,
                 headers={
-                    'X-Seller-Key': str(stored_secret),
+                    'X-Seller-Key': token_str,
                     'Content-Type': 'application/json'
                 },
                 method=method
             )
 
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_data = json.loads(response.read().decode('utf-8'))
-                return self.send_json(res_data)
+            try:
+                with urllib.request.urlopen(req, timeout=8) as response:
+                    raw_res = response.read().decode('utf-8')
+                    return self.send_json(json.loads(raw_res))
+            except urllib.error.HTTPError as e:
+                # Если твой сервер вернул 4xx или 5xx, пробрасываем это
+                return self.send_json({"error": f"Server API Error: {e.code}", "details": e.read().decode()}, e.code)
+            except Exception as e:
+                return self.send_json({"error": f"Connection failed: {str(e)}"}, 502)
 
         except Exception as e:
-            # Отправляем текст ошибки, чтобы ты увидел её в браузере
-            return self.send_json({"error": str(e)}, 500)
-
-    def do_GET(self):
-        self.send_json({"status": "error", "message": "Use POST for all actions"}, 405)
+            return self.send_json({"error": f"Internal Proxy Error: {str(e)}"}, 500)
