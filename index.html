@@ -209,24 +209,35 @@
         
         const res = await apiRequest('/api/seller/keys');
         
-        if (res && res.keys) {
+        // Проверяем, что пришел объект и в нем есть массив keys
+        if (res && Array.isArray(res.keys)) {
             container.innerHTML = '';
             if (res.keys.length === 0) {
                 container.innerHTML = 'Список пуст';
                 return;
             }
-            res.keys.reverse().forEach(k => {
+    
+            // Разворачиваем список, чтобы новые были сверху
+            const sortedKeys = [...res.keys].reverse();
+    
+            sortedKeys.forEach(k => {
+                // ФИКС: Проверяем все возможные варианты имен полей
+                const keyName = k.license_key || k.key || "НЕТ КЛЮЧА";
+                const prodName = k.product_name || k.product || k.name || "Без названия";
+                const duration = k.duration_days || k.days || k.duration || "?";
+    
                 container.innerHTML += `
                     <div class="key-item">
                         <div class="key-info">
-                            <span class="key-code">${k.license_key}</span>
-                            <span class="key-meta">${k.product_name} | ${k.duration_days} дн.</span>
+                            <span class="key-code">${keyName}</span>
+                            <span class="key-meta">${prodName} | ${duration} дн.</span>
                         </div>
-                        <button class="delete-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ</button>
+                        <button class="delete-btn" onclick="deleteKey('${keyName}')">УДАЛИТЬ</button>
                     </div>`;
             });
         } else {
-            container.innerHTML = '❌ Ошибка загрузки';
+            container.innerHTML = '❌ Ошибка: Данные не получены';
+            console.log("Ответ сервера:", res); // Посмотри в консоль, если снова будет ошибка
         }
     }
 
