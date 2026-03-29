@@ -14,17 +14,15 @@
         .container { max-width: 1100px; margin: 0 auto; }
         .card { background: var(--bg); border-radius: 14px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        /* Табы */
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #ddd; font-weight: bold; cursor: pointer; }
         .tab-btn.active { background: var(--btn); color: #fff; }
 
-        /* Фильтры */
         .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
         .f-btn { padding: 6px 12px; border-radius: 20px; border: 1px solid #ccc; background: #fff; font-size: 12px; white-space: nowrap; cursor: pointer; }
         .f-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
 
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
         .btn-main { width: 100%; background: var(--btn); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
         
         #list-container, #prod-container { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -42,7 +40,7 @@
         .val { font-size: 13px; font-weight: 600; }
 
         .hwid-box { background: #f8f9fa; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #666; word-break: break-all; border: 1px dashed #ddd; }
-        .delete-btn { background: #fff5f5; color: var(--err); border: 1px solid #ffdada; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .delete-btn { background: #fff5f5; color: var(--err); border: 1px solid #ffdada; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 5px; }
         
         .hidden { display: none !important; }
         .text-right { text-align: right; }
@@ -54,23 +52,25 @@
     <div id="auth-screen" style="display: none;">
         <div class="card" style="max-width: 400px; margin: auto;">
             <h3 style="text-align:center">🛡️ Admin Access</h3>
-            <input type="password" id="auth-pass" placeholder="Введите пароль">
+            <p id="user-display" style="font-size: 12px; text-align: center; color: #888;"></p>
+            <input type="text" id="reg-key" placeholder="Secret Key (для привязки)">
+            <input type="password" id="auth-pass" placeholder="Пароль">
             <button class="btn-main" onclick="handleAuth()">ВОЙТИ</button>
         </div>
     </div>
 
     <div id="main-content" style="display: none;">
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('keys')">КЛЮЧИ</button>
-            <button class="tab-btn" onclick="switchTab('prods')">ПРОДУКТЫ</button>
+            <button class="tab-btn active" id="t-keys" onclick="switchTab('keys')">КЛЮЧИ</button>
+            <button class="tab-btn" id="t-prods" onclick="switchTab('prods')">ПРОДУКТЫ</button>
         </div>
 
         <div id="tab-keys">
             <div class="card">
                 <h4>➕ Создать лицензию</h4>
                 <div style="display: flex; gap: 10px;">
-                    <input type="text" id="p-name" placeholder="Продукт">
-                    <input type="number" id="p-days" value="30" style="width: 80px;">
+                    <input type="text" id="p-name" placeholder="Название продукта">
+                    <input type="number" id="p-days" value="30" style="width: 90px;">
                 </div>
                 <button class="btn-main" onclick="generateKey()" style="margin-top:5px;">ГЕНЕРИРОВАТЬ</button>
             </div>
@@ -85,30 +85,48 @@
 
         <div id="tab-prods" class="hidden">
             <div class="card">
-                <h4>📦 Добавить продукт</h4>
-                <input type="text" id="new-prod-name" placeholder="Название (уникальное)">
-                <p style="font-size: 11px; color: #666;">* Файлы загружаются через основной сервер. Здесь управление списком.</p>
-                <button class="btn-main" onclick="alert('Для загрузки .dll используйте прямой метод upload-product (через Python или Postman)')">ИНФО ПО ЗАГРУЗКЕ</button>
+                <h4>📦 Добавленные продукты</h4>
+                <p style="font-size: 11px; color: #666;">Список ваших .dll файлов на сервере</p>
             </div>
             <div id="prod-container">Загрузка...</div>
         </div>
+        
+        <button class="delete-btn" style="width:100%; margin-top:20px; background:#eee;" onclick="logout()">СМЕНИТЬ АККАУНТ / ВЫЙТИ</button>
     </div>
 </div>
 
 <script>
-    let userPass = localStorage.getItem('app_p');
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // ПРИВЯЗКА К ID: Ключ в localStorage теперь уникален для каждого Telegram аккаунта
+    const tgId = tg.initDataUnsafe?.user?.id || "default";
+    const storageKey = 'app_p_' + tgId;
+    let userPass = localStorage.getItem(storageKey);
     let allKeys = [];
     let currentFilter = 'all';
 
     window.onload = () => {
-        if (!userPass) document.getElementById('auth-screen').style.display = 'flex';
-        else showMain();
+        if (tg.initDataUnsafe?.user) {
+            document.getElementById('user-display').innerText = "Аккаунт: " + tg.initDataUnsafe.user.first_name;
+        }
+        if (!userPass) {
+            document.getElementById('auth-screen').style.display = 'flex';
+        } else {
+            showMain();
+        }
     };
+
+    function logout() {
+        localStorage.removeItem(storageKey);
+        location.reload();
+    }
 
     function switchTab(tab) {
         document.getElementById('tab-keys').classList.toggle('hidden', tab !== 'keys');
         document.getElementById('tab-prods').classList.toggle('hidden', tab !== 'prods');
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(tab === 'keys' ? 'ключи' : 'продукт')));
+        document.getElementById('t-keys').classList.toggle('active', tab === 'keys');
+        document.getElementById('t-prods').classList.toggle('active', tab === 'prods');
         if (tab === 'prods') refreshProds();
     }
 
@@ -118,18 +136,29 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: userPass, path: path, method: method, payload: body })
         });
-        return await res.json();
+        const data = await res.json();
+        if (res.status === 401) { logout(); }
+        return data;
     }
 
     async function handleAuth() {
         const pass = document.getElementById('auth-pass').value;
+        const key = document.getElementById('reg-key').value;
+        if (!pass) return;
+        
         const res = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'login', password: pass })
+            body: JSON.stringify({ action: key ? 'register' : 'login', password: pass, secret_key: key })
         });
-        if (res.ok) { localStorage.setItem('app_p', pass); userPass = pass; showMain(); }
-        else alert("Ошибка!");
+        
+        if (res.ok) { 
+            localStorage.setItem(storageKey, pass); 
+            userPass = pass; 
+            showMain(); 
+        } else { 
+            alert("Ошибка входа! Проверьте пароль или Secret Key."); 
+        }
     }
 
     function showMain() {
@@ -146,6 +175,8 @@
     }
 
     async function refreshKeys() {
+        const container = document.getElementById('list-container');
+        container.innerHTML = 'Синхронизация...';
         const res = await apiRequest('/api/seller/keys');
         if (res && res.status === "ok") {
             allKeys = res.keys;
@@ -158,23 +189,25 @@
         container.innerHTML = '';
         
         let filtered = allKeys.slice().reverse();
-        if (currentFilter === 'free') filtered = filtered.filter(k => !k.hwid);
+        if (currentFilter === 'free') filtered = filtered.filter(k => !k.hwid || k.hwid === "");
         if (currentFilter === 'active') filtered = filtered.filter(k => k.is_active);
 
         filtered.forEach(k => {
             const prod = k.products && k.products[0];
             const hwid = k.hwid || "ОЖИДАЕТ ПРИВЯЗКИ";
-            const prodName = prod ? prod.name : "Нет продукта";
+            const prodName = prod ? prod.name : "Не указан";
             
             let timeStr = "---";
-            let timeColor = "";
-            if (prod && prod.expires_at) {
+            let timeColor = "color: var(--text)";
+            
+            if (prod && prod.expires_at && prod.expires_at > 0) {
                 const diff = prod.expires_at - Math.floor(Date.now()/1000);
                 if (diff <= 0) { timeStr = "ИСТЕК"; timeColor = "color:var(--err)"; }
                 else if (diff < 86400) timeStr = Math.floor(diff/3600)+"ч "+Math.floor((diff%3600)/60)+"м";
                 else timeStr = Math.floor(diff/86400)+" дн.";
             } else {
-                timeStr = (prod ? prod.duration_days : (k.duration_days || 0)) + " дн. (запас)";
+                const dDays = prod ? prod.duration_days : (k.duration_days || 0);
+                timeStr = dDays + " дн. (запас)";
                 timeColor = "color:var(--ok)";
             }
 
@@ -188,17 +221,17 @@
                     </div>
                     <div class="info-grid">
                         <div><span class="label">ПРОДУКТ</span><b class="val">${prodName}</b></div>
-                        <div class="text-right"><span class="label">СРОК</span><b class="val" style="${timeColor}">${timeStr}</b></div>
+                        <div class="text-right"><span class="label">ОСТАТОК</span><b class="val" style="${timeColor}">${timeStr}</b></div>
                     </div>
                     <div><span class="label">HWID</span><div class="hwid-box">${hwid}</div></div>
-                    <button class="delete-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ</button>
+                    <button class="delete-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ ЛИЦЕНЗИЮ</button>
                 </div>`;
         });
     }
 
     async function refreshProds() {
         const container = document.getElementById('prod-container');
-        container.innerHTML = 'Загрузка...';
+        container.innerHTML = 'Загрузка продуктов...';
         const res = await apiRequest('/api/seller/products');
         if (res && res.products) {
             container.innerHTML = '';
@@ -206,12 +239,12 @@
                 const size = (p.file_size / 1024 / 1024).toFixed(2);
                 container.innerHTML += `
                     <div class="prod-card">
-                        <div class="header-row"><b>${p.name}</b> <span class="status-badge" style="background:#eef">${p.is_active ? 'ON':'OFF'}</span></div>
+                        <div class="header-row"><b>${p.name}</b> <span class="status-badge" style="background:#eef; color:#44a">FILE OK</span></div>
                         <div class="info-grid">
-                            <div><span class="label">ФАЙЛ</span><span class="val">${p.file_name}</span></div>
+                            <div><span class="label">ИМЯ ФАЙЛА</span><span class="val">${p.file_name}</span></div>
                             <div class="text-right"><span class="label">РАЗМЕР</span><span class="val">${size} MB</span></div>
                         </div>
-                        <button class="delete-btn" onclick="deleteProd('${p.name}')">УДАЛИТЬ ПРОДУКТ</button>
+                        <button class="delete-btn" onclick="deleteProd('${p.name}')">УДАЛИТЬ ИЗ БАЗЫ</button>
                     </div>`;
             });
         }
@@ -220,12 +253,14 @@
     async function generateKey() {
         const name = document.getElementById('p-name').value;
         const days = document.getElementById('p-days').value;
+        if (!name) return alert("Введите продукт!");
         const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) });
-        if (res.status === "ok") refreshKeys(); else alert(res.message);
+        if (res.status === "ok") { document.getElementById('p-name').value = ''; refreshKeys(); } 
+        else alert(res.message);
     }
 
-    async function deleteKey(k) { if(confirm('Удалить ключ?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
-    async function deleteProd(n) { if(confirm('Удалить продукт? Все ключи к нему перестанут работать!')) { await apiRequest('/api/seller/delete-product','POST',{product_name:n}); refreshProds(); } }
+    async function deleteKey(k) { if(confirm('Удалить этот ключ?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
+    async function deleteProd(n) { if(confirm('ВНИМАНИЕ! Удаление продукта приведет к тому, что ВСЕ ключи этого продукта перестанут работать. Удалить?')) { await apiRequest('/api/seller/delete-product','POST',{product_name:n}); refreshProds(); } }
 </script>
 </body>
 </html>
