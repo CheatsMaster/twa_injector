@@ -6,16 +6,14 @@
     <title>Amazing Fisher Admin</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg: #ffffff; --sec-bg: #f0f2f5; --text: #1a1a1a; --btn: #2481cc; --err: #e74c3c; --ok: #27ae60; }
+        :root { --bg: #ffffff; --sec-bg: #f0f2f5; --text: #1a1a1a; --btn: #2481cc; --err: #e74c3c; --ok: #27ae60; --warn: #f39c12; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 10px; }
         .card { background: var(--bg); border-radius: 14px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        /* Auth Switch */
         .auth-modes { display: flex; background: #eee; border-radius: 10px; padding: 4px; margin-bottom: 15px; }
         .mode-btn { flex: 1; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #666; background: none; }
         .mode-btn.active { background: #fff; color: var(--btn); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        /* Tabs */
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #ddd; font-weight: bold; cursor: pointer; }
         .tab-btn.active { background: var(--btn); color: #fff; }
@@ -28,15 +26,16 @@
         .f-btn.active { background: var(--text); color: #fff; }
 
         #list-container, #prod-container { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        @media (min-width: 768px) { #list-container, #prod-container { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); } }
+        @media (min-width: 768px) { #list-container, #prod-container { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); } }
 
         .item-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .key-code { font-family: monospace; font-weight: bold; color: var(--btn); }
-        .info-row { display: flex; justify-content: space-between; border-top: 1px solid #f9f9f9; padding-top: 8px; margin-top: 5px; }
-        .label { color: #999; font-size: 10px; text-transform: uppercase; }
+        .key-code { font-family: monospace; font-weight: bold; color: var(--btn); font-size: 15px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid #f9f9f9; padding-top: 10px; margin-top: 5px; }
+        .label { color: #999; font-size: 10px; text-transform: uppercase; display: block; margin-bottom: 2px; }
         .val { font-size: 13px; font-weight: 600; }
-        .hwid-box { background: #f8f9fa; padding: 6px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #666; word-break: break-all; border: 1px dashed #ddd; }
-        .del-btn { color: var(--err); background: #fff5f5; border: 1px solid #ffdada; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        
+        .hwid-box { background: #f8f9fa; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #666; word-break: break-all; border: 1px dashed #ddd; margin-top: 5px; }
+        .del-btn { color: var(--err); background: #fff5f5; border: 1px solid #ffdada; padding: 10px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -45,7 +44,7 @@
 <div class="container">
     <div id="auth-screen">
         <div class="card" style="max-width: 400px; margin: 40px auto;">
-            <h3 style="text-align:center">🛡️ Вход в панель</h3>
+            <h3 style="text-align:center">🛡️ Авторизация</h3>
             <div class="auth-modes">
                 <button id="m-login" class="mode-btn active" onclick="setAuthMode('login')">ВХОД</button>
                 <button id="m-reg" class="mode-btn" onclick="setAuthMode('reg')">РЕГИСТРАЦИЯ</button>
@@ -66,19 +65,19 @@
 
         <div id="tab-keys">
             <div class="card">
-                <h4>➕ Создать ключ</h4>
+                <h4>➕ Создать лицензию</h4>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="p-name" placeholder="Название продукта">
+                    <input type="text" id="p-name" placeholder="Продукт">
                     <input type="number" id="p-days" value="30" style="width: 80px;">
                 </div>
-                <button class="btn-main" onclick="generateKey()">ГЕНЕРИРОВАТЬ</button>
+                <button class="btn-main" onclick="generateKey()">СОЗДАТЬ</button>
             </div>
             <div class="filters">
                 <button class="f-btn active" onclick="setFilter('all', this)">Все</button>
                 <button class="f-btn" onclick="setFilter('free', this)">Свободные</button>
                 <button class="f-btn" onclick="setFilter('active', this)">Активные</button>
             </div>
-            <div id="list-container">Загрузка...</div>
+            <div id="list-container"></div>
         </div>
 
         <div id="tab-prods" class="hidden">
@@ -98,6 +97,12 @@
     let allKeys = [];
 
     window.onload = () => { if (userPass) checkSession(); };
+
+    function formatDate(ts) {
+        if (!ts) return "---";
+        const d = new Date(ts * 1000);
+        return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
 
     function setAuthMode(mode) {
         authMode = mode;
@@ -162,15 +167,32 @@
         if (f === 'active') list = list.filter(k => k.is_active);
         
         list.forEach(k => {
-            const prod = k.products[0];
+            const prod = k.products ? k.products[0] : null;
+            let timeLeft = "---";
+            let timeColor = "color: var(--text)";
+
+            if (prod && prod.expires_at) {
+                const diff = prod.expires_at - Math.floor(Date.now()/1000);
+                if (diff <= 0) { timeLeft = "ИСТЕК"; timeColor = "color: var(--err)"; }
+                else if (diff < 86400) timeLeft = Math.floor(diff/3600) + "ч " + Math.floor((diff%3600)/60) + "м";
+                else timeLeft = Math.floor(diff/86400) + " дн.";
+            } else {
+                // Если ключ не использован, берем срок из duration_days (если есть в объекте ключа или продукта)
+                const days = prod ? prod.duration_days : (k.duration_days || 0);
+                timeLeft = days + " дн. (запас)";
+                timeColor = "color: var(--ok)";
+            }
+
             c.innerHTML += `<div class="item-card">
                 <div class="key-code">${k.license_key}</div>
-                <div class="info-row">
+                <div class="info-grid">
                     <div><span class="label">ПРОДУКТ</span><div class="val">${prod?prod.name:'---'}</div></div>
+                    <div style="text-align:right"><span class="label">ОСТАТОК</span><div class="val" style="${timeColor}">${timeLeft}</div></div>
+                    <div><span class="label">СОЗДАН</span><div class="val" style="font-size:11px">${formatDate(k.created)}</div></div>
                     <div style="text-align:right"><span class="label">СТАТУС</span><div class="val" style="color:${k.is_active?'var(--ok)':'#999'}">${k.is_active?'ACTIVE':'READY'}</div></div>
                 </div>
-                <div><span class="label">HWID</span><div class="hwid-box">${k.hwid || 'СВОБОДЕН'}</div></div>
-                <button class="del-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ КЛЮЧ</button>
+                <div><span class="label">HWID ПРИВЯЗКА</span><div class="hwid-box">${k.hwid || 'НЕ ПРИВЯЗАН'}</div></div>
+                <button class="del-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ ЛИЦЕНЗИЮ</button>
             </div>`;
         });
     }
@@ -184,9 +206,10 @@
             res.products.forEach(p => {
                 c.innerHTML += `<div class="item-card">
                     <b>${p.name}</b>
-                    <div class="info-row">
-                        <span class="val">${p.file_name}</span>
-                        <span class="val">${(p.file_size/1024/1024).toFixed(2)} MB</span>
+                    <div class="info-grid" style="border:none; margin:0; padding:0">
+                        <div><span class="label">ФАЙЛ</span><span class="val">${p.file_name}</span></div>
+                        <div style="text-align:right"><span class="label">РАЗМЕР</span><span class="val">${(p.file_size/1024/1024).toFixed(2)} MB</span></div>
+                        <div><span class="label">ДОБАВЛЕН</span><span class="val" style="font-size:11px">${formatDate(p.created)}</span></div>
                     </div>
                 </div>`;
             });
@@ -196,11 +219,13 @@
     async function generateKey() {
         const n = document.getElementById('p-name').value;
         const d = document.getElementById('p-days').value;
+        if(!n) return alert("Укажите название продукта");
         const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: n, days: parseInt(d) });
         if (res.status === "ok") { document.getElementById('p-name').value=''; refreshKeys(); }
+        else alert(res.message || "Ошибка генерации");
     }
 
-    async function deleteKey(k) { if(confirm('Удалить?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
+    async function deleteKey(k) { if(confirm('Удалить этот ключ навсегда?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
     function setFilter(f, b) { document.querySelectorAll('.f-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderKeys(f); }
 </script>
 </body>
