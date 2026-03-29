@@ -6,190 +6,74 @@
     <title>Amazing Fisher Admin</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { 
-            --bg: #ffffff; 
-            --sec-bg: #f4f4f9; 
-            --text: #222; 
-            --btn: #2481cc; 
-            --btn-hover: #1c66a3;
-            --btn-txt: #ffffff; 
-            --err: #ff4d4d;
-        }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: var(--sec-bg); 
-            color: var(--text); 
-            margin: 0; 
-            padding: 15px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .container { width: 100%; max-width: 500px; }
-        .card { 
-            background: var(--bg); 
-            border-radius: 16px; 
-            padding: 20px; 
-            margin-bottom: 15px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
-        }
-        h3, h4 { margin-top: 0; color: #333; }
-        input { 
-            width: 100%; 
-            padding: 14px; 
-            margin: 10px 0; 
-            border: 1px solid #ddd; 
-            border-radius: 12px; 
-            box-sizing: border-box; 
-            font-size: 16px; 
-            outline: none;
-            transition: border 0.2s;
-        }
-        input:focus { border-color: var(--btn); }
-        .btn-main { 
-            width: 100%; 
-            background: var(--btn); 
-            color: var(--btn-txt); 
-            border: none; 
-            padding: 15px; 
-            border-radius: 12px; 
-            font-weight: bold; 
-            font-size: 16px;
-            cursor: pointer; 
-            transition: background 0.2s;
-        }
-        .btn-main:active { background: var(--btn-hover); transform: scale(0.98); }
-        .btn-main:disabled { background: #ccc; cursor: not-allowed; }
-        
-        .key-item { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 12px 0; 
-            border-bottom: 1px solid #eee; 
-        }
-        .key-item:last-child { border-bottom: none; }
+        :root { --bg: #ffffff; --sec-bg: #f4f4f9; --text: #222; --btn: #2481cc; --btn-txt: #ffffff; --err: #ff4d4d; }
+        body { font-family: -apple-system, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 15px; }
+        .card { background: var(--bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        .btn-main { width: 100%; background: var(--btn); color: var(--btn-txt); border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .key-item { padding: 12px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .key-info { display: flex; flex-direction: column; gap: 4px; }
-        .key-code { font-family: monospace; font-weight: bold; color: #444; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+        .key-code { font-family: monospace; font-weight: bold; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
         .key-meta { font-size: 12px; color: #888; }
-        
-        .delete-btn { color: var(--err); border: none; background: none; font-weight: bold; cursor: pointer; padding: 5px; }
-        #auth-screen { display: flex; flex-direction: column; justify-content: center; min-height: 80vh; }
-        .loader { text-align: center; color: #888; padding: 20px; }
+        .delete-btn { color: var(--err); border: none; background: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div id="auth-screen" style="display: none;">
-        <div class="card">
-            <h3 style="text-align:center">🛡️ Вход в панель</h3>
-            <div id="reg-fields">
-                <input type="text" id="reg-key" placeholder="Secret Key (для первой привязки)">
-            </div>
-            <input type="password" id="auth-pass" placeholder="Ваш пароль">
-            <button id="login-btn" class="btn-main" onclick="handleAuth()">ПОДТВЕРДИТЬ</button>
-            <p id="auth-error" style="color:red; font-size:13px; text-align:center; display:none;"></p>
-        </div>
+<div id="auth-screen" style="display: none;">
+    <div class="card">
+        <h3 style="text-align:center">🛡️ Вход</h3>
+        <input type="text" id="reg-key" placeholder="Secret Key (для первой привязки)">
+        <input type="password" id="auth-pass" placeholder="Ваш пароль">
+        <button class="btn-main" onclick="handleAuth()">ВОЙТИ</button>
+    </div>
+</div>
+
+<div id="main-content" style="display: none;">
+    <div class="card">
+        <h4>⚡ Создать лицензию</h4>
+        <input type="text" id="p-name" placeholder="Название продукта (из списка)">
+        <input type="number" id="p-days" value="30">
+        <button id="gen-btn" class="btn-main" onclick="generateKey()">ГЕНЕРИРОВАТЬ</button>
     </div>
 
-    <div id="main-content" style="display: none;">
-        <div class="card">
-            <h4>⚡ Создать лицензию</h4>
-            <input type="text" id="p-name" placeholder="Название (например: Turbo)">
-            <input type="number" id="p-days" value="30" placeholder="Дней">
-            <button id="gen-btn" class="btn-main" onclick="generateKey()">ГЕНЕРИРОВАТЬ</button>
-        </div>
-
-        <div class="card">
-            <h4>📋 Активные ключи</h4>
-            <div id="list-container" class="loader">Загрузка...</div>
-        </div>
-        
-        <button class="btn-main" style="background:#888; margin-top:10px;" onclick="logout()">ВЫЙТИ</button>
+    <div class="card">
+        <h4>📋 Список ключей</h4>
+        <div id="list-container">Загрузка...</div>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
-    
     let userPass = localStorage.getItem('app_p');
 
     window.onload = () => {
-        if (!userPass) {
-            document.getElementById('auth-screen').style.display = 'flex';
-        } else {
-            showMain();
-        }
+        if (!userPass) document.getElementById('auth-screen').style.display = 'flex';
+        else showMain();
     };
 
-    // Универсальная функция запроса к прокси
     async function apiRequest(path, method = 'GET', body = null) {
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    password: userPass, 
-                    path: path, 
-                    method: method, 
-                    payload: body 
-                })
-            });
-
-            const data = await res.json();
-            
-            if (!res.ok) {
-                if (res.status === 401) logout();
-                throw new Error(data.error || `Ошибка: ${res.status}`);
-            }
-            return data;
-        } catch (e) {
-            console.error(e);
-            alert(e.message);
-            return null;
-        }
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: userPass, path: path, method: method, payload: body })
+        });
+        const data = await res.json();
+        if (res.status === 401) { localStorage.removeItem('app_p'); location.reload(); }
+        return data;
     }
 
     async function handleAuth() {
         const pass = document.getElementById('auth-pass').value;
         const key = document.getElementById('reg-key').value;
-        const btn = document.getElementById('login-btn');
-        const err = document.getElementById('auth-error');
-
-        if (!pass) return;
-        
-        btn.disabled = true;
-        err.style.display = 'none';
-
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: key ? 'register' : 'login', 
-                    password: pass, 
-                    secret_key: key 
-                })
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                localStorage.setItem('app_p', pass);
-                userPass = pass;
-                showMain();
-            } else {
-                err.innerText = data.error || "Ошибка доступа";
-                err.style.display = 'block';
-            }
-        } catch (e) {
-            err.innerText = "Нет связи с сервером";
-            err.style.display = 'block';
-        } finally {
-            btn.disabled = false;
-        }
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: key ? 'register' : 'login', password: pass, secret_key: key })
+        });
+        if (res.ok) { localStorage.setItem('app_p', pass); userPass = pass; showMain(); }
+        else alert("Ошибка входа!");
     }
 
     function showMain() {
@@ -198,46 +82,32 @@
         refresh();
     }
 
-    function logout() {
-        localStorage.removeItem('app_p');
-        location.reload();
-    }
-
     async function refresh() {
         const container = document.getElementById('list-container');
-        container.innerHTML = '🔄 Синхронизация...';
-        
         const res = await apiRequest('/api/seller/keys');
         
-        // Проверяем, что пришел объект и в нем есть массив keys
-        if (res && Array.isArray(res.keys)) {
+        if (res && res.status === "ok" && Array.isArray(res.keys)) {
             container.innerHTML = '';
-            if (res.keys.length === 0) {
-                container.innerHTML = 'Список пуст';
-                return;
-            }
-    
-            // Разворачиваем список, чтобы новые были сверху
-            const sortedKeys = [...res.keys].reverse();
-    
-            sortedKeys.forEach(k => {
-                // ФИКС: Проверяем все возможные варианты имен полей
-                const keyName = k.license_key || k.key || "НЕТ КЛЮЧА";
-                const prodName = k.product_name || k.product || k.name || "Без названия";
-                const duration = k.duration_days || k.days || k.duration || "?";
-    
+            if (res.keys.length === 0) { container.innerHTML = 'Нет ключей'; return; }
+            
+            [...res.keys].reverse().forEach(k => {
+                const key = k.license_key || "N/A";
+                // В API список продуктов внутри ключа — это массив 
+                const productsInfo = k.products && k.products.length > 0 
+                    ? k.products.map(p => p.name).join(', ') 
+                    : 'Без продуктов';
+
                 container.innerHTML += `
                     <div class="key-item">
                         <div class="key-info">
-                            <span class="key-code">${keyName}</span>
-                            <span class="key-meta">${prodName} | ${duration} дн.</span>
+                            <span class="key-code">${key}</span>
+                            <span class="key-meta">${productsInfo}</span>
                         </div>
-                        <button class="delete-btn" onclick="deleteKey('${keyName}')">УДАЛИТЬ</button>
+                        <button class="delete-btn" onclick="deleteKey('${key}')">УДАЛИТЬ</button>
                     </div>`;
             });
         } else {
-            container.innerHTML = '❌ Ошибка: Данные не получены';
-            console.log("Ответ сервера:", res); // Посмотри в консоль, если снова будет ошибка
+            container.innerHTML = 'Ошибка загрузки';
         }
     }
 
@@ -245,30 +115,25 @@
         const name = document.getElementById('p-name').value;
         const days = document.getElementById('p-days').value;
         const btn = document.getElementById('gen-btn');
-
-        if (!name) return alert("Укажите название");
-
+        
+        if (!name) return alert("Введите название продукта");
+        
         btn.disabled = true;
-        btn.innerText = "⏳ СОЗДАНИЕ...";
-
-        const res = await apiRequest('/api/seller/generate-key', 'POST', { 
-            product_name: name, 
-            days: parseInt(days) 
-        });
-
+        const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) });
         btn.disabled = false;
-        btn.innerText = "ГЕНЕРИРОВАТЬ";
-
-        if (res) {
+        
+        if (res && res.status === "ok") {
             document.getElementById('p-name').value = '';
             refresh();
+        } else {
+            alert("Ошибка: " + (res ? res.message : "неизвестно"));
         }
     }
 
     async function deleteKey(k) {
-        if (confirm(`Удалить ключ ${k}?`)) {
+        if (confirm(`Удалить ${k}?`)) {
             const res = await apiRequest('/api/seller/delete-key', 'POST', { license_key: k });
-            if (res) refresh();
+            if (res && res.status === "ok") refresh();
         }
     }
 </script>
