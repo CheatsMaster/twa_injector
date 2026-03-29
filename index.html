@@ -137,7 +137,7 @@
     }
 
     async function apiRequest(path, method = 'GET', body = null) {
-        const res = await fetch('/api/proxy', { // Должно быть строго /api/proxy
+        const res = await fetch('/api/proxy.py', { // Должно быть строго /api/proxy
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
