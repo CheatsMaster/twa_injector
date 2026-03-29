@@ -11,63 +11,112 @@
         .card { background: var(--bg); border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
         .btn-main { width: 100%; background: var(--btn); color: var(--btn-txt); border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .key-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
+        .key-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 14px; }
         #auth-screen { display: flex; flex-direction: column; justify-content: center; height: 80vh; }
+        .error-msg { color: red; font-size: 12px; margin-top: 5px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen" style="display: none;">
     <div class="card">
-        <h3 style="text-align:center">🔐 Вход</h3>
-        <div id="reg-fields"><input type="text" id="reg-key" placeholder="Secret Key (первый раз)"></div>
-        <input type="password" id="auth-pass" placeholder="Придумайте паро heartль">
+        <h3 style="text-align:center">🔐 Авторизация</h3>
+        <div id="reg-fields">
+            <input type="text" id="reg-key" placeholder="Secret Key (только для первого входа)">
+        </div>
+        <input type="password" id="auth-pass" placeholder="Придумайте пароль">
         <button class="btn-main" onclick="handleAuth()">ВОЙТИ</button>
+        <div id="auth-error" class="error-msg"></div>
     </div>
 </div>
 
 <div id="main-content" style="display: none;">
     <div class="card">
-        <h4>Создать ключ</h4>
-        <input type="text" id="p-name" placeholder="Название продукта">
-        <input type="number" id="p-days" value="30">
+        <h4>Создать новый ключ</h4>
+        <input type="text" id="p-name" placeholder="Название продукта (например, Pro)">
+        <input type="number" id="p-days" value="30" placeholder="Дней">
         <button class="btn-main" onclick="generateKey()">⚡ ГЕНЕРИРОВАТЬ</button>
     </div>
-    <div id="keys-list"></div>
+    <div id="keys-list" class="card">
+        <h4 style="margin-top:0">Активные ключи</h4>
+        <div id="list-container">Загрузка...</div>
+    </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
+    
     let userPass = localStorage.getItem('app_p');
 
     window.onload = () => {
-        if (!userPass) document.getElementById('auth-screen').style.display = 'flex';
-        else showMain();
+        if (!userPass) {
+            document.getElementById('auth-screen').style.display = 'flex';
+        } else {
+            showMain();
+        }
     };
 
     async function apiRequest(path, method = 'GET', body = null) {
-        // ОБРАТИ ВНИМАНИЕ: путь с .py
-        const res = await fetch('/api/proxy', { // БЕЗ .py в конце!
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            password: userPass,
-            path: path,
-            method: method,
-            payload: body
-        })
-    });
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    password: userPass, 
+                    path: path, 
+                    method: method, 
+                    payload: body 
+                })
+            });
+
+            if (!res.ok) {
+                if (res.status === 401) {
+                    localStorage.removeItem('app_p');
+                    location.reload();
+                }
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `Ошибка сервера: ${res.status}`);
+            }
+
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            alert("Ошибка запроса: " + e.message);
+            return null;
+        }
+    }
 
     async function handleAuth() {
         const pass = document.getElementById('auth-pass').value;
         const key = document.getElementById('reg-key').value;
-        const res = await fetch('/api/proxy.py', {
-            method: 'POST',
-            body: JSON.stringify({ action: key ? 'register' : 'login', password: pass, secret_key: key })
-        });
-        if (res.ok) { localStorage.setItem('app_p', pass); userPass = pass; showMain(); }
-        else alert("Ошибка входа!");
+        const errBox = document.getElementById('auth-error');
+        
+        if (!pass) return alert("Введите пароль");
+
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: key ? 'register' : 'login', 
+                    password: pass, 
+                    secret_key: key 
+                })
+            });
+
+            const data = await res.json();
+            
+            if (res.ok) {
+                localStorage.setItem('app_p', pass);
+                userPass = pass;
+                showMain();
+            } else {
+                errBox.innerText = data.error || "Ошибка входа";
+            }
+        } catch (e) {
+            errBox.innerText = "Сервер недоступен";
+        }
     }
 
     function showMain() {
@@ -77,26 +126,42 @@
     }
 
     async function refresh() {
-        const res = await apiRequest('/keys');
-        const list = document.getElementById('keys-list');
-        list.innerHTML = '';
-        if (res.keys) res.keys.reverse().forEach(k => {
-            list.innerHTML += `<div class="card key-item">
-                <span>${k.license_key}</span>
-                <button onclick="deleteKey('${k.license_key}')" style="color:red; background:none; border:none;">Удалить</button>
-            </div>`;
+        const container = document.getElementById('list-container');
+        const res = await apiRequest('/api/seller/keys'); // Путь к твоему API на сервере 95.181...
+        
+        if (!res || !res.keys) {
+            container.innerHTML = "Ключи не найдены или ошибка API";
+            return;
+        }
+
+        container.innerHTML = '';
+        res.keys.reverse().forEach(k => {
+            container.innerHTML += `
+                <div class="key-item">
+                    <span><code>${k.license_key}</code></span>
+                    <button onclick="deleteKey('${k.license_key}')" style="color:red; background:none; border:none; cursor:pointer;">✖</button>
+                </div>`;
         });
     }
 
     async function generateKey() {
         const name = document.getElementById('p-name').value;
         const days = document.getElementById('p-days').value;
-        await apiRequest('/generate-key', 'POST', { product_name: name, days: parseInt(days) });
-        refresh();
+        if (!name) return alert("Введите название продукта");
+
+        const res = await apiRequest('/api/seller/generate-key', 'POST', { 
+            product_name: name, 
+            days: parseInt(days) 
+        });
+        
+        if (res) refresh();
     }
 
     async function deleteKey(k) {
-        if (confirm('Удалить?')) { await apiRequest('/delete-key', 'POST', { license_key: k }); refresh(); }
+        if (confirm(`Удалить ключ ${k}?`)) {
+            const res = await apiRequest('/api/seller/delete-key', 'POST', { license_key: k });
+            if (res) refresh();
+        }
     }
 </script>
 </body>
