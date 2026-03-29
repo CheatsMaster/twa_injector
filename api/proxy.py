@@ -1,11 +1,30 @@
-from http.server import BaseHTTPRequestHandler
-import urllib.request
-import json
 import os
+import json
+import urllib.request
+from http.server import BaseHTTPRequestHandler
 from upstash_redis import Redis
 
-# Подключение к Redis (Vercel сам подставит переменные, если ты нажал Connect)
-redis = Redis.from_env()
+# Универсальный поиск ключей в переменных Vercel
+# Он проверит и STORAGE_REST_API_URL, и KV_REST_API_URL, и другие варианты
+def get_redis_client():
+    url = (
+        os.environ.get("STORAGE_REST_API_URL") or 
+        os.environ.get("KV_REST_API_URL") or 
+        os.environ.get("UPSTASH_REDIS_REST_URL")
+    )
+    token = (
+        os.environ.get("STORAGE_REST_API_TOKEN") or 
+        os.environ.get("KV_REST_API_TOKEN") or 
+        os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+    )
+    
+    if not url or not token:
+        # Если это упадет, значит Vercel не пробросил ключи
+        raise ValueError("Database keys not found. Go to Vercel Project Settings -> Environment Variables and check them.")
+    
+    return Redis(url=url, token=token)
+
+redis = get_redis_client()
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
