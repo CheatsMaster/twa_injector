@@ -5,235 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Amazing Fisher Admin</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
-            --bg: var(--tg-theme-bg-color, #ffffff);
-            --sec-bg: var(--tg-theme-secondary-bg-color, #f0f0f5);
-            --text: var(--tg-theme-text-color, #222);
-            --hint: var(--tg-theme-hint-color, #999);
-            --btn: var(--tg-theme-button-color, #2481cc);
-            --btn-txt: var(--tg-theme-button-text-color, #ffffff);
-        }
-        body { font-family: -apple-system, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding-bottom: 30px; }
+        :root { --bg: #ffffff; --sec-bg: #f0f0f5; --text: #222; --btn: #2481cc; --btn-txt: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 10px; }
         .card { background: var(--bg); border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .header { background: var(--bg); padding: 15px; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 10; }
-        .tabs { display: flex; background: var(--bg); border-bottom: 1px solid #ddd; }
-        .tab { flex: 1; padding: 15px; text-align: center; font-size: 13px; font-weight: bold; color: var(--hint); border-bottom: 2px solid transparent; }
-        .tab.active { color: var(--btn); border-bottom: 2px solid var(--btn); }
-        
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; background: var(--bg); color: var(--text); font-size: 16px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
         .btn-main { width: 100%; background: var(--btn); color: var(--btn-txt); border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        
-        .key-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .key-item:last-child { border-bottom: none; }
-        .key-val { font-family: monospace; color: var(--btn); font-weight: bold; font-size: 14px; }
-        .badge { font-size: 11px; padding: 3px 7px; border-radius: 5px; background: #f0f0f0; margin-top: 5px; display: inline-block; }
-        .badge.active { background: #e8f5e9; color: #2e7d32; }
-        .badge.new { background: #e3f2fd; color: #1976d2; }
-        
-        #auth-screen { position: fixed; top:0; left:0; right:0; bottom:0; background: var(--sec-bg); z-index: 100; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
-        .progress-container { height: 6px; background: #eee; border-radius: 3px; margin: 8px 0; overflow: hidden; }
-        .progress-bar { height: 100%; background: var(--btn); width: 0%; transition: width 0.3s; }
+        .key-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
+        #auth-screen { display: flex; flex-direction: column; justify-content: center; height: 80vh; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen" style="display: none;">
     <div class="card">
-        <h2 style="text-align: center; margin-top: 0;">🔐 Вход в панель</h2>
-        <p style="font-size: 12px; color: var(--hint); text-align: center;">Если вы входите впервые, введите Secret Key для регистрации пароля.</p>
-        <div id="first-time-reg" style="display: none;">
-            <input type="text" id="reg-secret" placeholder="Secret Key (из файла)">
-        </div>
-        <input type="password" id="login-pass" placeholder="Ваш пароль">
-        <button class="btn-main" onclick="handleAuth()">ВОЙТИ / ЗАРЕГИСТРИРОВАТЬ</button>
+        <h3 style="text-align:center">🔐 Вход</h3>
+        <div id="reg-fields"><input type="text" id="reg-key" placeholder="Secret Key (первый раз)"></div>
+        <input type="password" id="auth-pass" placeholder="Придумайте паро heartль">
+        <button class="btn-main" onclick="handleAuth()">ВОЙТИ</button>
     </div>
 </div>
 
 <div id="main-content" style="display: none;">
-    <div class="header">
-        <div style="display:flex; justify-content: space-between; font-size: 12px; color: var(--hint);">
-            <span>Хранилище</span>
-            <span id="storage-txt">0/200 MB</span>
-        </div>
-        <div class="progress-container"><div id="storage-bar" class="progress-bar"></div></div>
+    <div class="card">
+        <h4>Создать ключ</h4>
+        <input type="text" id="p-name" placeholder="Название продукта">
+        <input type="number" id="p-days" value="30">
+        <button class="btn-main" onclick="generateKey()">⚡ ГЕНЕРИРОВАТЬ</button>
     </div>
-
-    <div class="tabs">
-        <div id="t-keys" class="tab active" onclick="switchTab('keys')">ЛИЦЕНЗИИ</div>
-        <div id="t-prods" class="tab" onclick="switchTab('prods')">ФАЙЛЫ</div>
-    </div>
-
-    <div id="view-keys" class="container" style="padding: 10px;">
-        <div class="card">
-            <input type="text" id="gen-prod" placeholder="Название продукта (например, Test)">
-            <input type="number" id="gen-days" value="30" placeholder="Дни">
-            <button class="btn-main" onclick="generateKey()">⚡ СОЗДАТЬ КЛЮЧ</button>
-        </div>
-        <input type="text" id="search" placeholder="🔍 Поиск по ключу..." oninput="filterKeys()" style="border:none; margin-bottom: 5px;">
-        <div id="keys-list"></div>
-    </div>
-
-    <div id="view-prods" class="container" style="padding: 10px; display: none;">
-        <div class="card" style="text-align: center; color: var(--hint); font-size: 13px;">
-            Управление .dll файлами [cite: 6]
-        </div>
-        <div id="prods-list"></div>
-    </div>
+    <div id="keys-list"></div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
+    let userPass = localStorage.getItem('app_p');
 
-    let sessionPass = localStorage.getItem('app_pass');
-
-    // Инициализация при загрузке
-    window.onload = async () => {
-        if (!sessionPass) {
-            document.getElementById('auth-screen').style.display = 'flex';
-            // Проверка: пустая ли база (упрощенно - всегда показываем поле ключа при отсутствии пароля в памяти)
-            document.getElementById('first-time-reg').style.display = 'block';
-        } else {
-            showPanel();
-        }
+    window.onload = () => {
+        if (!userPass) document.getElementById('auth-screen').style.display = 'flex';
+        else showMain();
     };
 
-    async function handleAuth() {
-        const pass = document.getElementById('login-pass').value;
-        const secret = document.getElementById('reg-secret').value;
-        
-        if (!pass) return alert("Введите пароль!");
-
-        const payload = { 
-            action: secret ? 'register' : 'login',
-            password: pass,
-            secret_key: secret || null,
-            path: '/keys', // Тестовый запрос для проверки
-            method: 'GET'
-        };
-
-        const res = await fetch('/api/proxy', {
+    async function apiRequest(path, method = 'GET', body = null) {
+        // ОБРАТИ ВНИМАНИЕ: путь с .py
+        const res = await fetch('/api/proxy.py', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ password: userPass, path, method, payload: body })
         });
-
-        if (res.ok) {
-            localStorage.setItem('app_pass', pass);
-            sessionPass = pass;
-            showPanel();
-        } else {
-            const err = await res.json();
-            alert("Ошибка: " + (err.message || "Неверный пароль"));
-        }
+        const data = await res.json();
+        if (res.status === 401) { localStorage.removeItem('app_p'); location.reload(); }
+        return data;
     }
 
-    function showPanel() {
+    async function handleAuth() {
+        const pass = document.getElementById('auth-pass').value;
+        const key = document.getElementById('reg-key').value;
+        const res = await fetch('/api/proxy.py', {
+            method: 'POST',
+            body: JSON.stringify({ action: key ? 'register' : 'login', password: pass, secret_key: key })
+        });
+        if (res.ok) { localStorage.setItem('app_p', pass); userPass = pass; showMain(); }
+        else alert("Ошибка входа!");
+    }
+
+    function showMain() {
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
         refresh();
     }
 
-    async function apiRequest(path, method = 'GET', body = null) {
-        const res = await fetch('/api/proxy', { // Должно быть строго /api/proxy
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                password: sessionPass,
-                path: path,
-                method: method,
-                payload: body
-            })
-        });
-        if (res.status === 401) {
-            localStorage.removeItem('app_pass');
-            location.reload();
-        }
-        return await res.json();
-    }
-
     async function refresh() {
-        // Лимиты и продукты [cite: 4]
-        const resP = await apiRequest('/products');
-        if (resP.status === 'ok') {
-            const curMb = resP.limits.current_total_size / (1024*1024);
-            document.getElementById('storage-bar').style.width = (curMb/200*100) + '%';
-            document.getElementById('storage-txt').innerText = curMb.toFixed(1) + ' / 200 MB';
-            
-            const pList = document.getElementById('prods-list');
-            pList.innerHTML = '';
-            resP.products.forEach(p => {
-                pList.innerHTML += `<div class="card key-item">
-                    <div><b>${p.name}</b><br><small style="color:var(--hint)">${p.file_name}</small></div>
-                    <button onclick="deleteProd('${p.name}')" style="color:red; border:none; background:none; font-size:18px;">&times;</button>
-                </div>`;
-            });
-        }
-
-        // Ключи [cite: 5]
-        const resK = await apiRequest('/keys');
-        if (resK.status === 'ok') {
-            const kList = document.getElementById('keys-list');
-            kList.innerHTML = '';
-            resK.keys.reverse().forEach(k => {
-                const p = k.products[0] || {};
-                const isNew = !k.hwid;
-                kList.innerHTML += `
-                    <div class="card">
-                        <div class="key-item">
-                            <div style="flex: 1;" onclick="copyKey('${k.license_key}')">
-                                <span class="key-val">${k.license_key}</span><br>
-                                <span class="badge ${isNew ? 'new' : 'active'}">
-                                    ${isNew ? 'Ожидает' : 'Активен'} | ${p.name || '---'}
-                                </span>
-                                <div style="font-size:11px; color:var(--hint); margin-top:4px;">${formatTime(p.expires_at, p.days, k.hwid)}</div>
-                            </div>
-                            <button onclick="deleteKey('${k.license_key}')" style="color:red; border:none; background:none; font-size:20px; padding:10px;">&times;</button>
-                        </div>
-                    </div>`;
-            });
-        }
-    }
-
-    function formatTime(exp, days, hwid) {
-        if (!hwid) return `Срок: ${days} дн. после активации`;
-        const diff = exp - (Date.now()/1000);
-        if (diff <= 0) return "Срок истек";
-        return diff > 86400 ? Math.floor(diff/86400) + " дн. осталось" : "Меньше 24 часов";
-    }
-
-    function copyKey(key) {
-        navigator.clipboard.writeText(key);
-        tg.HapticFeedback.notificationOccurred('success');
-        tg.showConfirm("Ключ скопирован! Закрыть уведомление?");
-    }
-
-    function switchTab(t) {
-        document.getElementById('view-keys').style.display = t === 'keys' ? 'block' : 'none';
-        document.getElementById('view-prods').style.display = t === 'prods' ? 'block' : 'none';
-        document.getElementById('t-keys').classList.toggle('active', t === 'keys');
-        document.getElementById('t-prods').classList.toggle('active', t === 'prods');
-        refresh();
+        const res = await apiRequest('/keys');
+        const list = document.getElementById('keys-list');
+        list.innerHTML = '';
+        if (res.keys) res.keys.reverse().forEach(k => {
+            list.innerHTML += `<div class="card key-item">
+                <span>${k.license_key}</span>
+                <button onclick="deleteKey('${k.license_key}')" style="color:red; background:none; border:none;">Удалить</button>
+            </div>`;
+        });
     }
 
     async function generateKey() {
-        const name = document.getElementById('gen-prod').value;
-        const days = document.getElementById('gen-days').value;
-        if (!name) return alert("Введите название продукта!");
+        const name = document.getElementById('p-name').value;
+        const days = document.getElementById('p-days').value;
         await apiRequest('/generate-key', 'POST', { product_name: name, days: parseInt(days) });
         refresh();
     }
 
-    async function deleteKey(k) { if(confirm('Удалить лицензию?')) { await apiRequest('/delete-key', 'POST', { license_key: k }); refresh(); } }
-    async function deleteProd(n) { if(confirm('Удалить файл продукта?')) { await apiRequest('/delete-product', 'POST', { product_name: n }); refresh(); } }
-
-    function filterKeys() {
-        const val = document.getElementById('search').value.toLowerCase();
-        document.querySelectorAll('#keys-list .card').forEach(c => {
-            c.style.display = c.innerText.toLowerCase().includes(val) ? 'block' : 'none';
-        });
+    async function deleteKey(k) {
+        if (confirm('Удалить?')) { await apiRequest('/delete-key', 'POST', { license_key: k }); refresh(); }
     }
 </script>
 </body>
