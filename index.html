@@ -6,40 +6,92 @@
     <title>Amazing Fisher Admin</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg: #ffffff; --sec-bg: #f4f4f9; --text: #222; --btn: #2481cc; --btn-txt: #ffffff; --err: #ff4d4d; }
-        body { font-family: -apple-system, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 15px; }
-        .card { background: var(--bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
-        .btn-main { width: 100%; background: var(--btn); color: var(--btn-txt); border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        .key-item { padding: 12px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .key-info { display: flex; flex-direction: column; gap: 4px; }
-        .key-code { font-family: monospace; font-weight: bold; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-        .key-meta { font-size: 12px; color: #888; }
-        .delete-btn { color: var(--err); border: none; background: none; font-weight: bold; cursor: pointer; }
+        :root { 
+            --bg: #ffffff; --sec-bg: #f0f2f5; --text: #1a1a1a; 
+            --btn: #2481cc; --err: #e74c3c; --ok: #27ae60; --warn: #f39c12;
+        }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 15px; }
+        
+        .container { max-width: 1100px; margin: 0 auto; }
+        .card { background: var(--bg); border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        
+        h3, h4 { margin: 0 0 15px 0; color: #333; }
+        input { 
+            width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; 
+            border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none;
+        }
+        .btn-main { 
+            width: 100%; background: var(--btn); color: #fff; border: none; 
+            padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .btn-main:active { transform: scale(0.98); opacity: 0.9; }
+
+        /* Сетка ключей */
+        #list-container { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 15px; 
+        }
+
+        /* Адаптивность для ПК */
+        @media (min-width: 768px) {
+            #list-container { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+        }
+
+        .key-card { 
+            background: #fff; border: 1px solid #eee; border-radius: 14px; 
+            padding: 18px; display: flex; flex-direction: column; gap: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .header-row { display: flex; justify-content: space-between; align-items: center; }
+        .key-code { font-family: 'Courier New', monospace; font-weight: bold; font-size: 14px; color: var(--btn); }
+        
+        .status-badge { font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 800; }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid #f9f9f9; padding-top: 12px; }
+        .label { color: #999; display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .val { font-size: 13px; font-weight: 600; }
+
+        .hwid-box { 
+            background: #f8f9fa; padding: 10px; border-radius: 8px; 
+            font-family: monospace; font-size: 11px; color: #666;
+            word-break: break-all; border: 1px dashed #ddd;
+        }
+
+        .delete-btn { 
+            background: #fff5f5; color: var(--err); border: 1px solid #ffdada;
+            padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
+        }
+        .delete-btn:hover { background: var(--err); color: #fff; }
+
+        #auth-screen { display: flex; flex-direction: column; justify-content: center; min-height: 80vh; }
     </style>
 </head>
 <body>
 
-<div id="auth-screen" style="display: none;">
-    <div class="card">
-        <h3 style="text-align:center">🛡️ Вход</h3>
-        <input type="text" id="reg-key" placeholder="Secret Key (для первой привязки)">
-        <input type="password" id="auth-pass" placeholder="Ваш пароль">
-        <button class="btn-main" onclick="handleAuth()">ВОЙТИ</button>
-    </div>
-</div>
-
-<div id="main-content" style="display: none;">
-    <div class="card">
-        <h4>⚡ Создать лицензию</h4>
-        <input type="text" id="p-name" placeholder="Название продукта (из списка)">
-        <input type="number" id="p-days" value="30">
-        <button id="gen-btn" class="btn-main" onclick="generateKey()">ГЕНЕРИРОВАТЬ</button>
+<div class="container">
+    <div id="auth-screen" style="display: none;">
+        <div class="card" style="max-width: 400px; margin: auto;">
+            <h3 style="text-align:center">🔑 Admin Access</h3>
+            <input type="text" id="reg-key" placeholder="Secret Key (первый раз)">
+            <input type="password" id="auth-pass" placeholder="Пароль">
+            <button class="btn-main" onclick="handleAuth()">ВОЙТИ</button>
+        </div>
     </div>
 
-    <div class="card">
-        <h4>📋 Список ключей</h4>
-        <div id="list-container">Загрузка...</div>
+    <div id="main-content" style="display: none;">
+        <div class="card">
+            <h4>➕ Создать лицензию</h4>
+            <div style="display: grid; grid-template-columns: 1fr 100px; gap: 10px;">
+                <input type="text" id="p-name" placeholder="Название продукта">
+                <input type="number" id="p-days" value="30">
+            </div>
+            <button id="gen-btn" class="btn-main" onclick="generateKey()" style="margin-top:10px;">ГЕНЕРИРОВАТЬ</button>
+        </div>
+
+        <h4>📋 Активные ключи</h4>
+        <div id="list-container">Загрузка данных...</div>
     </div>
 </div>
 
@@ -67,6 +119,8 @@
     async function handleAuth() {
         const pass = document.getElementById('auth-pass').value;
         const key = document.getElementById('reg-key').value;
+        if (!pass) return;
+        
         const res = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -84,89 +138,73 @@
 
     async function refresh() {
         const container = document.getElementById('list-container');
-        container.innerHTML = '🔄 Синхронизация...';
-        
         const res = await apiRequest('/api/seller/keys');
         
         if (res && res.status === "ok" && Array.isArray(res.keys)) {
             container.innerHTML = '';
-            if (res.keys.length === 0) {
-                container.innerHTML = 'Список пуст';
-                return;
-            }
-    
             [...res.keys].reverse().forEach(k => {
-                const key = k.license_key || "N/A";
-                const hwid = k.hwid || "Не привязан";
-                const isActive = k.is_active ? "✅ Активен" : "❌ Выключен";
+                const key = k.license_key || "N/A"; [cite: 5]
+                const hwid = k.hwid || "EMPTY_HWID"; [cite: 5]
+                const statusColor = k.is_active ? 'background:#e6f4ea; color:#1e7e34;' : 'background:#fce8e6; color:#d93025;'; [cite: 5]
+                const dateStr = k.created ? new Date(k.created * 1000).toLocaleDateString() : "---"; [cite: 5]
                 
-                // 1. Дата создания (из unix timestamp)
-                const createdDate = k.created ? new Date(k.created * 1000).toLocaleString() : "Неизвестно";
-    
-                // 2. Расчет оставшегося времени (берем первый продукт в ключе для примера)
-                let timeInfo = "Срок не задан";
-                if (k.products && k.products.length > 0) {
-                    const p = k.products[0];
+                // Логика времени
+                let timeStr = "---";
+                let timeStyle = "";
+                const prod = k.products && k.products[0]; [cite: 5]
+                
+                if (prod) {
                     const now = Math.floor(Date.now() / 1000);
-                    const timeLeft = p.expires_at - now;
-    
-                    if (timeLeft <= 0) {
-                        timeInfo = "⌛ Истек";
-                    } else if (timeLeft < 86400) { // Меньше 1 дня
-                        const hours = Math.floor(timeLeft / 3600);
-                        const minutes = Math.floor((timeLeft % 3600) / 60);
-                        timeInfo = `⌛ ${hours}ч ${minutes}м`;
+                    const diff = prod.expires_at - now; [cite: 5, 6]
+
+                    if (diff <= 0) {
+                        timeStr = "ИСТЕК";
+                        timeStyle = "color: var(--err)";
+                    } else if (diff < 86400) {
+                        const h = Math.floor(diff / 3600);
+                        const m = Math.floor((diff % 3600) / 60);
+                        timeStr = `${h}ч ${m}м`;
+                        timeStyle = "color: var(--warn)";
                     } else {
-                        const days = Math.floor(timeLeft / 86400);
-                        timeInfo = `⌛ ${days} дн.`;
+                        timeStr = `${Math.floor(diff / 86400)} дн.`;
                     }
                 }
-    
+
                 container.innerHTML += `
-                    <div class="key-item" style="flex-direction: column; align-items: flex-start; gap: 8px; padding: 15px 0;">
-                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <div class="key-card">
+                        <div class="header-row">
                             <span class="key-code">${key}</span>
-                            <span style="font-size: 12px; font-weight: bold;">${isActive}</span>
+                            <span class="status-badge" style="${statusColor}">${k.is_active ? 'ACTIVE' : 'OFF'}</span>
                         </div>
-                        
-                        <div class="key-meta" style="width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                            <div>📅 Создан: ${createdDate}</div>
-                            <div style="text-align: right; color: #2481cc; font-weight: bold;">${timeInfo}</div>
-                            <div style="grid-column: span 2; background: #f9f9f9; padding: 4px; border-radius: 4px; margin-top: 5px;">
-                                🆔 HWID: <span style="font-family: monospace; font-size: 11px;">${hwid}</span>
-                            </div>
+                        <div class="info-grid">
+                            <div><span class="label">Создан</span><span class="val">${dateStr}</span></div>
+                            <div style="text-align:right"><span class="label">Осталось</span><span class="val" style="${timeStyle}">${timeStr}</span></div>
                         </div>
-    
-                        <button class="delete-btn" onclick="deleteKey('${key}')" style="align-self: flex-end; margin-top: 5px;">УДАЛИТЬ КЛЮЧ</button>
+                        <div>
+                            <span class="label">HWID</span>
+                            <div class="hwid-box">${hwid}</div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteKey('${key}')">УДАЛИТЬ КЛЮЧ</button>
                     </div>`;
             });
         } else {
-            container.innerHTML = '❌ Ошибка загрузки данных';
+            container.innerHTML = 'Ошибка загрузки';
         }
     }
 
     async function generateKey() {
         const name = document.getElementById('p-name').value;
         const days = document.getElementById('p-days').value;
-        const btn = document.getElementById('gen-btn');
+        if (!name) return alert("Введите название!");
         
-        if (!name) return alert("Введите название продукта");
-        
-        btn.disabled = true;
-        const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) });
-        btn.disabled = false;
-        
-        if (res && res.status === "ok") {
-            document.getElementById('p-name').value = '';
-            refresh();
-        } else {
-            alert("Ошибка: " + (res ? res.message : "неизвестно"));
-        }
+        const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) }); [cite: 7]
+        if (res && res.status === "ok") { document.getElementById('p-name').value = ''; refresh(); }
+        else alert("Ошибка: " + (res?.message || "unknown"));
     }
 
     async function deleteKey(k) {
         if (confirm(`Удалить ${k}?`)) {
-            const res = await apiRequest('/api/seller/delete-key', 'POST', { license_key: k });
+            const res = await apiRequest('/api/seller/delete-key', 'POST', { license_key: k }); [cite: 8]
             if (res && res.status === "ok") refresh();
         }
     }
