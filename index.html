@@ -26,14 +26,8 @@
         }
         .btn-main:active { transform: scale(0.98); opacity: 0.9; }
 
-        /* Сетка ключей */
-        #list-container { 
-            display: grid; 
-            grid-template-columns: 1fr; 
-            gap: 15px; 
-        }
+        #list-container { display: grid; grid-template-columns: 1fr; gap: 15px; }
 
-        /* Адаптивность для ПК */
         @media (min-width: 768px) {
             #list-container { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
         }
@@ -66,6 +60,7 @@
         .delete-btn:hover { background: var(--err); color: #fff; }
 
         #auth-screen { display: flex; flex-direction: column; justify-content: center; min-height: 80vh; }
+        .text-right { text-align: right; }
     </style>
 </head>
 <body>
@@ -100,20 +95,30 @@
     tg.expand();
     let userPass = localStorage.getItem('app_p');
 
-    window.onload = () => {
-        if (!userPass) document.getElementById('auth-screen').style.display = 'flex';
-        else showMain();
+    window.onload = function() {
+        if (!userPass) {
+            document.getElementById('auth-screen').style.display = 'flex';
+        } else {
+            showMain();
+        }
     };
 
     async function apiRequest(path, method = 'GET', body = null) {
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: userPass, path: path, method: method, payload: body })
-        });
-        const data = await res.json();
-        if (res.status === 401) { localStorage.removeItem('app_p'); location.reload(); }
-        return data;
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: userPass, path: path, method: method, payload: body })
+            });
+            const data = await res.json();
+            if (res.status === 401) { 
+                localStorage.removeItem('app_p'); 
+                location.reload(); 
+            }
+            return data;
+        } catch (e) {
+            return { status: "error", message: "Ошибка сети" };
+        }
     }
 
     async function handleAuth() {
@@ -121,13 +126,22 @@
         const key = document.getElementById('reg-key').value;
         if (!pass) return;
         
-        const res = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: key ? 'register' : 'login', password: pass, secret_key: key })
-        });
-        if (res.ok) { localStorage.setItem('app_p', pass); userPass = pass; showMain(); }
-        else alert("Ошибка входа!");
+        try {
+            const res = await fetch('/api/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: key ? 'register' : 'login', password: pass, secret_key: key })
+            });
+            if (res.ok) { 
+                localStorage.setItem('app_p', pass); 
+                userPass = pass; 
+                showMain(); 
+            } else { 
+                alert("Ошибка входа!"); 
+            }
+        } catch (e) {
+            alert("Сервер недоступен");
+        }
     }
 
     function showMain() {
@@ -142,69 +156,76 @@
         
         if (res && res.status === "ok" && Array.isArray(res.keys)) {
             container.innerHTML = '';
-            [...res.keys].reverse().forEach(k => {
-                const key = k.license_key || "N/A"; [cite: 5]
-                const hwid = k.hwid || "EMPTY_HWID"; [cite: 5]
-                const statusColor = k.is_active ? 'background:#e6f4ea; color:#1e7e34;' : 'background:#fce8e6; color:#d93025;'; [cite: 5]
-                const dateStr = k.created ? new Date(k.created * 1000).toLocaleDateString() : "---"; [cite: 5]
+            res.keys.slice().reverse().forEach(function(k) {
+                const key = k.license_key || "N/A";
+                const hwid = k.hwid || "ОЖИДАЕТ ПРИВЯЗКИ";
+                const badgeStyle = k.is_active ? 'background:#e6f4ea; color:#1e7e34;' : 'background:#fce8e6; color:#d93025;';
+                const dateStr = k.created ? new Date(k.created * 1000).toLocaleDateString() : "---";
                 
-                // Логика времени
                 let timeStr = "---";
-                let timeStyle = "";
-                const prod = k.products && k.products[0]; [cite: 5]
+                let timeColor = "color: var(--text)";
+                const prod = k.products && k.products[0];
                 
-                if (prod) {
+                if (prod && prod.expires_at) {
                     const now = Math.floor(Date.now() / 1000);
-                    const diff = prod.expires_at - now; [cite: 5, 6]
+                    const diff = prod.expires_at - now;
 
                     if (diff <= 0) {
                         timeStr = "ИСТЕК";
-                        timeStyle = "color: var(--err)";
+                        timeColor = "color: var(--err)";
                     } else if (diff < 86400) {
                         const h = Math.floor(diff / 3600);
                         const m = Math.floor((diff % 3600) / 60);
-                        timeStr = `${h}ч ${m}м`;
-                        timeStyle = "color: var(--warn)";
+                        timeStr = h + "ч " + m + "м";
+                        timeColor = "color: var(--warn)";
                     } else {
-                        timeStr = `${Math.floor(diff / 86400)} дн.`;
+                        timeStr = Math.floor(diff / 86400) + " дн.";
                     }
                 }
 
-                container.innerHTML += `
-                    <div class="key-card">
-                        <div class="header-row">
-                            <span class="key-code">${key}</span>
-                            <span class="status-badge" style="${statusColor}">${k.is_active ? 'ACTIVE' : 'OFF'}</span>
-                        </div>
-                        <div class="info-grid">
-                            <div><span class="label">Создан</span><span class="val">${dateStr}</span></div>
-                            <div style="text-align:right"><span class="label">Осталось</span><span class="val" style="${timeStyle}">${timeStr}</span></div>
-                        </div>
-                        <div>
-                            <span class="label">HWID</span>
-                            <div class="hwid-box">${hwid}</div>
-                        </div>
-                        <button class="delete-btn" onclick="deleteKey('${key}')">УДАЛИТЬ КЛЮЧ</button>
-                    </div>`;
+                container.innerHTML += '<div class="key-card">' +
+                    '<div class="header-row">' +
+                        '<span class="key-code">' + key + '</span>' +
+                        '<span class="status-badge" style="' + badgeStyle + '">' + (k.is_active ? "ACTIVE" : "OFF") + '</span>' +
+                    '</div>' +
+                    '<div class="info-grid">' +
+                        '<div><span class="label">Создан</span><span class="val">' + dateStr + '</span></div>' +
+                        '<div class="text-right"><span class="label">Осталось</span><span class="val" style="' + timeColor + '">' + timeStr + '</span></div>' +
+                    '</div>' +
+                    '<div>' +
+                        '<span class="label">HWID</span>' +
+                        '<div class="hwid-box">' + hwid + '</div>' +
+                    '</div>' +
+                    '<button class="delete-btn" onclick="deleteKey(\'' + key + '\')">УДАЛИТЬ КЛЮЧ</button>' +
+                '</div>';
             });
         } else {
-            container.innerHTML = 'Ошибка загрузки';
+            container.innerHTML = '<p>Ошибка загрузки списка ключей</p>';
         }
     }
 
     async function generateKey() {
         const name = document.getElementById('p-name').value;
         const days = document.getElementById('p-days').value;
-        if (!name) return alert("Введите название!");
+        if (!name) return alert("Введите название продукта!");
         
-        const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) }); [cite: 7]
-        if (res && res.status === "ok") { document.getElementById('p-name').value = ''; refresh(); }
-        else alert("Ошибка: " + (res?.message || "unknown"));
+        const btn = document.getElementById('gen-btn');
+        btn.disabled = true;
+
+        const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) });
+        btn.disabled = false;
+
+        if (res && res.status === "ok") { 
+            document.getElementById('p-name').value = ''; 
+            refresh(); 
+        } else { 
+            alert("Ошибка: " + (res && res.message ? res.message : "unknown")); 
+        }
     }
 
     async function deleteKey(k) {
-        if (confirm(`Удалить ${k}?`)) {
-            const res = await apiRequest('/api/seller/delete-key', 'POST', { license_key: k }); [cite: 8]
+        if (confirm("Удалить ключ " + k + "?")) {
+            const res = await apiRequest('/api/seller/delete-key', 'POST', { license_key: k });
             if (res && res.status === "ok") refresh();
         }
     }
