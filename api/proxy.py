@@ -8,7 +8,9 @@ from upstash_redis import Redis
 def get_redis():
     url = os.environ.get("UPSTASH_REDIS_REST_URL")
     token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-    return Redis(url=url, token=token) if url and token else None
+    if not url or not token:
+        return None
+    return Redis(url=url, token=token)
 
 redis_client = get_redis()
 
@@ -30,32 +32,50 @@ class handler(BaseHTTPRequestHandler):
             tg_id = str(body.get('tg_id', 'unknown'))
             
             if not password or not tg_id:
-                return self.send_json({"error": "Auth required"}, 401)
+                return self.send_json({"error": "ID и пароль обязательны"}, 401)
+
+            if redis_client is None:
+                return self.send_json({"error": "Redis не настроен в Vercel"}, 500)
 
             db_key = f"user:{tg_id}:auth"
 
-            # РЕГИСТРАЦИЯ (Привязка пароля к Secret Key для конкретного ID)
+            # РЕГИСТРАЦИЯ С ПРОВЕРКОЙ КЛЮЧА
             if action == 'register':
                 secret_key = body.get('secret_key')
-                if not secret_key: return self.send_json({"error": "Secret Key required"}, 400)
+                if not secret_key: 
+                    return self.send_json({"error": "Введите Secret Key"}, 400)
                 
-                # Сохраняем связку в Redis: { "pass": "...", "s_key": "..." }
+                # Проверяем ключ через запрос списка продуктов
+                check_req = urllib.request.Request(
+                    "http://95.181.213.84:8081/api/seller/products",
+                    headers={'X-Seller-Key': secret_key},
+                    method='GET'
+                )
+                try:
+                    with urllib.request.urlopen(check_req, timeout=5) as resp:
+                        res_data = json.loads(resp.read().decode('utf-8'))
+                        if res_data.get("status") != "ok":
+                            return self.send_json({"error": "Ключ продавца невалиден"}, 400)
+                except Exception:
+                    return self.send_json({"error": "Не удалось проверить ключ (ошибка API)"}, 400)
+
+                # Если проверка прошла — сохраняем
                 redis_client.set(db_key, json.dumps({"pass": password, "s_key": secret_key}))
                 return self.send_json({"status": "ok"})
 
-            # ПРОВЕРКА ВХОДА И ПРАВ
-            stored_data = redis_client.get(db_key)
-            if not stored_data:
-                return self.send_json({"error": "User not found"}, 401)
+            # ПРОВЕРКА ВХОДА
+            stored = redis_client.get(db_key)
+            if not stored:
+                return self.send_json({"error": "Аккаунт не найден. Зарегистрируйтесь."}, 401)
             
-            auth_info = json.loads(stored_data)
+            auth_info = json.loads(stored)
             if auth_info['pass'] != password:
-                return self.send_json({"error": "Wrong password"}, 401)
+                return self.send_json({"error": "Неверный пароль"}, 401)
 
             if action == 'login':
                 return self.send_json({"status": "ok"})
 
-            # ПРОКСИРОВАНИЕ К SELLER API
+            # ВЫПОЛНЕНИЕ ЗАПРОСОВ К SELLER API
             path = body.get('path')
             method = body.get('method', 'GET')
             payload = body.get('payload')
@@ -70,11 +90,8 @@ class handler(BaseHTTPRequestHandler):
                 method=method
             )
 
-            try:
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    return self.send_json(json.loads(response.read().decode('utf-8')))
-            except urllib.error.HTTPError as e:
-                return self.send_json({"error": "API Error"}, e.code)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                return self.send_json(json.loads(response.read().decode('utf-8')))
 
         except Exception as e:
             self.send_json({"error": str(e)}, 500)
