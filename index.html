@@ -14,27 +14,30 @@
         .container { max-width: 1100px; margin: 0 auto; }
         .card { background: var(--bg); border-radius: 14px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         
-        /* Табы */
+        /* Переключатель входа/регистрации */
+        .auth-modes { display: flex; background: #eee; border-radius: 10px; padding: 4px; margin-bottom: 15px; }
+        .mode-btn { flex: 1; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; background: none; color: #666; }
+        .mode-btn.active { background: #fff; color: var(--btn); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #ddd; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #ddd; font-weight: bold; cursor: pointer; }
         .tab-btn.active { background: var(--btn); color: #fff; }
 
-        /* Фильтры */
         .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
-        .f-btn { padding: 8px 15px; border-radius: 20px; border: 1px solid #ccc; background: #fff; font-size: 12px; white-space: nowrap; cursor: pointer; }
-        .f-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+        .f-btn { padding: 8px 15px; border-radius: 20px; border: 1px solid #ccc; background: #fff; font-size: 12px; cursor: pointer; }
+        .f-btn.active { background: var(--text); color: #fff; }
 
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
-        .btn-main { width: 100%; background: var(--btn); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .btn-main { width: 100%; background: var(--btn); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         
         #list-container, #prod-container { display: grid; grid-template-columns: 1fr; gap: 12px; }
         @media (min-width: 768px) {
-            #list-container, #prod-container { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+            #list-container, #prod-container { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
         }
 
-        .key-card, .prod-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; position: relative; }
+        .key-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; }
-        .key-code { font-family: monospace; font-weight: bold; color: var(--btn); font-size: 14px; }
+        .key-code { font-family: monospace; font-weight: bold; color: var(--btn); }
         .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
         
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid #f5f5f5; padding-top: 10px; }
@@ -42,12 +45,10 @@
         .val { font-size: 13px; font-weight: 600; }
 
         .hwid-box { background: #f8f9fa; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #666; word-break: break-all; border: 1px dashed #ddd; }
-        .delete-btn { background: #fff5f5; color: var(--err); border: 1px solid #ffdada; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .delete-btn { background: #fff5f5; color: var(--err); border: 1px solid #ffdada; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
         
         .hidden { display: none !important; }
         .text-right { text-align: right; }
-
-        #loader { text-align: center; padding: 20px; font-weight: bold; color: var(--btn); }
     </style>
 </head>
 <body>
@@ -55,28 +56,37 @@
 <div class="container">
     <div id="auth-screen" style="display: none;">
         <div class="card" style="max-width: 400px; margin: 40px auto;">
-            <h3 style="text-align:center">🔒 Admin Access</h3>
-            <p id="tg-info" style="text-align:center; font-size: 12px; color: #777;"></p>
-            <input type="text" id="reg-key" placeholder="Secret Key (только для привязки)">
+            <h3 style="text-align:center">🛡️ Доступ к панели</h3>
+            
+            <div class="auth-modes">
+                <button id="m-login" class="mode-btn active" onclick="setAuthMode('login')">ВХОД</button>
+                <button id="m-reg" class="mode-btn" onclick="setAuthMode('reg')">РЕГИСТРАЦИЯ</button>
+            </div>
+
+            <div id="reg-fields" class="hidden">
+                <p style="font-size: 11px; color: var(--warn); text-align: center;">Используйте при первом входе для привязки ключа</p>
+                <input type="text" id="reg-key" placeholder="Seller Secret Key">
+            </div>
+
             <input type="password" id="auth-pass" placeholder="Ваш пароль">
-            <button class="btn-main" onclick="handleAuth()">ПОДТВЕРДИТЬ</button>
+            <button class="btn-main" id="auth-submit" onclick="handleAuth()">ВОЙТИ</button>
         </div>
     </div>
 
     <div id="main-content" style="display: none;">
         <div class="tabs">
-            <button class="tab-btn active" id="tab-k-btn" onclick="switchTab('keys')">КЛЮЧИ</button>
-            <button class="tab-btn" id="tab-p-btn" onclick="switchTab('prods')">ПРОДУКТЫ</button>
+            <button class="tab-btn active" id="tk-btn" onclick="switchTab('keys')">КЛЮЧИ</button>
+            <button class="tab-btn" id="tp-btn" onclick="switchTab('prods')">ПРОДУКТЫ</button>
         </div>
 
         <div id="tab-keys">
             <div class="card">
                 <h4>➕ Создать ключ</h4>
                 <div style="display: grid; grid-template-columns: 1fr 90px; gap: 10px;">
-                    <input type="text" id="p-name" placeholder="Название продукта">
+                    <input type="text" id="p-name" placeholder="Продукт">
                     <input type="number" id="p-days" value="30">
                 </div>
-                <button class="btn-main" onclick="generateKey()" style="margin-top:10px;">СГЕНЕРИРОВАТЬ</button>
+                <button class="btn-main" onclick="generateKey()">ГЕНЕРИРОВАТЬ</button>
             </div>
 
             <div class="filters">
@@ -84,19 +94,14 @@
                 <button class="f-btn" onclick="setFilter('free', this)">Свободные</button>
                 <button class="f-btn" onclick="setFilter('active', this)">Активные</button>
             </div>
-            
             <div id="list-container"></div>
         </div>
 
         <div id="tab-prods" class="hidden">
-            <div class="card">
-                <h4>📦 Список продуктов (.dll)</h4>
-                <p style="font-size: 11px; color: #666;">Здесь отображаются все загруженные файлы на вашем сервере.</p>
-            </div>
             <div id="prod-container"></div>
         </div>
 
-        <button class="delete-btn" style="width:100%; margin-top:30px; background:#eee; color:#666; border:none;" onclick="logout()">ВЫЙТИ ИЗ СИСТЕМЫ</button>
+        <button class="delete-btn" style="width:100%; margin-top:20px; background:#eee; color:#666; border:none;" onclick="logout()">ВЫЙТИ / СМЕНИТЬ АККАУНТ</button>
     </div>
 </div>
 
@@ -104,29 +109,33 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    const user = tg.initDataUnsafe?.user;
-    const tgId = user?.id || "local_user";
-    const storageKey = 'fisher_pass_' + tgId;
-    
+    const tgId = tg.initDataUnsafe?.user?.id || "dev_user";
+    const storageKey = 'fisher_p_' + tgId;
     let userPass = localStorage.getItem(storageKey);
+    let authMode = 'login';
     let allKeys = [];
-    let currentFilter = 'all';
 
     window.onload = async () => {
-        if(user) document.getElementById('tg-info').innerText = "Telegram: " + user.first_name + " (ID: " + tgId + ")";
-        
         if (!userPass) {
             showAuth();
         } else {
-            // Проверка пароля на сервере при входе
-            const check = await apiRequest('/api/seller/products', 'GET');
-            if (!check || check.error) {
+            // Быстрая проверка сессии
+            const check = await apiRequest('/api/seller/products');
+            if (check && check.error) {
                 logout();
             } else {
                 showMain();
             }
         }
     };
+
+    function setAuthMode(mode) {
+        authMode = mode;
+        document.getElementById('reg-fields').classList.toggle('hidden', mode !== 'reg');
+        document.getElementById('m-login').classList.toggle('active', mode === 'login');
+        document.getElementById('m-reg').classList.toggle('active', mode === 'reg');
+        document.getElementById('auth-submit').innerText = mode === 'reg' ? 'ЗАРЕГИСТРИРОВАТЬСЯ' : 'ВОЙТИ';
+    }
 
     function showAuth() {
         document.getElementById('auth-screen').style.display = 'block';
@@ -144,44 +153,18 @@
         location.reload();
     }
 
-    function switchTab(tab) {
-        document.getElementById('tab-keys').classList.toggle('hidden', tab !== 'keys');
-        document.getElementById('tab-prods').classList.toggle('hidden', tab !== 'prods');
-        document.getElementById('tab-k-btn').classList.toggle('active', tab === 'keys');
-        document.getElementById('tab-p-btn').classList.toggle('active', tab === 'prods');
-        if (tab === 'prods') refreshProds();
-    }
-
-    async function apiRequest(path, method = 'GET', body = null) {
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    password: userPass, 
-                    tg_id: tgId, 
-                    path: path, 
-                    method: method, 
-                    payload: body 
-                })
-            });
-            if (res.status === 401) return { error: "unauthorized" };
-            return await res.json();
-        } catch (e) {
-            return { error: "network_error" };
-        }
-    }
-
     async function handleAuth() {
         const pass = document.getElementById('auth-pass').value;
         const secret = document.getElementById('reg-key').value;
+        
         if (!pass) return alert("Введите пароль");
+        if (authMode === 'reg' && !secret) return alert("Введите Secret Key для регистрации");
 
         const res = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                action: secret ? 'register' : 'login', 
+                action: authMode === 'reg' ? 'register' : 'login', 
                 password: pass, 
                 tg_id: tgId, 
                 secret_key: secret 
@@ -194,93 +177,85 @@
             showMain();
         } else {
             const data = await res.json();
-            alert("Ошибка: " + (data.error || "Доступ запрещен"));
+            alert("Ошибка: " + (data.error || "Проверьте данные"));
         }
+    }
+
+    async function apiRequest(path, method = 'GET', body = null) {
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: userPass, tg_id: tgId, path: path, method: method, payload: body })
+        });
+        if (res.status === 401) return { error: "unauth" };
+        return await res.json();
+    }
+
+    function switchTab(tab) {
+        document.getElementById('tab-keys').classList.toggle('hidden', tab !== 'keys');
+        document.getElementById('tab-prods').classList.toggle('hidden', tab !== 'prods');
+        document.getElementById('tk-btn').classList.toggle('active', tab === 'keys');
+        document.getElementById('tp-btn').classList.toggle('active', tab === 'prods');
+        if (tab === 'prods') refreshProds();
     }
 
     function setFilter(f, btn) {
-        currentFilter = f;
         document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        renderKeys();
+        renderKeys(f);
     }
 
     async function refreshKeys() {
-        const container = document.getElementById('list-container');
-        container.innerHTML = '<div id="loader">Загрузка ключей...</div>';
         const res = await apiRequest('/api/seller/keys');
         if (res && res.status === "ok") {
             allKeys = res.keys;
-            renderKeys();
+            renderKeys('all');
         }
     }
 
-    function renderKeys() {
+    function renderKeys(filter) {
         const container = document.getElementById('list-container');
         container.innerHTML = '';
+        let list = allKeys.slice().reverse();
         
-        let filtered = allKeys.slice().reverse();
-        if (currentFilter === 'free') filtered = filtered.filter(k => !k.hwid);
-        if (currentFilter === 'active') filtered = filtered.filter(k => k.is_active);
+        if (filter === 'free') list = list.filter(k => !k.hwid);
+        if (filter === 'active') list = list.filter(k => k.is_active);
 
-        if (filtered.length === 0) {
-            container.innerHTML = '<center style="padding:20px; color:#888;">Нет ключей в этой категории</center>';
-            return;
-        }
-
-        filtered.forEach(k => {
+        list.forEach(k => {
             const prod = k.products && k.products[0];
-            const hwid = k.hwid || "СВОБОДЕН (ЖДЕТ ИГРОКА)";
-            const prodName = prod ? prod.name : "Неизвестно";
-            
-            let timeStr = "---";
-            let timeColor = "";
-            
-            if (prod && prod.expires_at) {
-                const diff = prod.expires_at - Math.floor(Date.now()/1000);
-                if (diff <= 0) { timeStr = "ИСТЕК"; timeColor = "color:var(--err)"; }
-                else if (diff < 86400) timeStr = Math.floor(diff/3600) + "ч " + Math.floor((diff%3600)/60) + "м";
-                else timeStr = Math.floor(diff/86400) + " дн.";
-            } else {
-                const dDays = prod ? prod.duration_days : (k.duration_days || 0);
-                timeStr = dDays + " дн. (запас)";
-                timeColor = "color:var(--ok)";
-            }
-
+            const hwid = k.hwid || "ОЖИДАЕТ ПРИВЯЗКИ";
             container.innerHTML += `
                 <div class="key-card">
                     <div class="header-row">
                         <span class="key-code">${k.license_key}</span>
                         <span class="status-badge" style="background:${k.is_active ? '#e6f4ea;color:#1e7e34':'#f5f5f5;color:#888'}">
-                            ${k.is_active ? 'АКТИВЕН' : 'ГОТОВ'}
+                            ${k.is_active ? 'ACTIVE' : 'READY'}
                         </span>
                     </div>
                     <div class="info-grid">
-                        <div><span class="label">ПРОДУКТ</span><b class="val">${prodName}</b></div>
-                        <div class="text-right"><span class="label">ОСТАТОК</span><b class="val" style="${timeColor}">${timeStr}</b></div>
+                        <div><span class="label">ПРОДУКТ</span><b class="val">${prod ? prod.name : '---'}</b></div>
+                        <div class="text-right"><span class="label">ОСТАТОК</span><b class="val">${prod ? prod.duration_days + ' дн.' : '---'}</b></div>
                     </div>
-                    <div><span class="label">HWID ПРИВЯЗКА</span><div class="hwid-box">${hwid}</div></div>
-                    <button class="delete-btn" onclick="deleteKey('${k.license_key}')">АННУЛИРОВАТЬ КЛЮЧ</button>
+                    <div><span class="label">HWID</span><div class="hwid-box">${hwid}</div></div>
+                    <button class="delete-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ</button>
                 </div>`;
         });
     }
 
     async function refreshProds() {
         const container = document.getElementById('prod-container');
-        container.innerHTML = '<div id="loader">Загрузка товаров...</div>';
+        container.innerHTML = 'Загрузка...';
         const res = await apiRequest('/api/seller/products');
         if (res && res.products) {
             container.innerHTML = '';
             res.products.forEach(p => {
-                const size = (p.file_size / 1024 / 1024).toFixed(2);
                 container.innerHTML += `
-                    <div class="prod-card">
-                        <div class="header-row"><b>${p.name}</b> <span class="status-badge" style="background:#eef; color:#44a">DLL</span></div>
+                    <div class="key-card">
+                        <div class="header-row"><b>${p.name}</b> <span class="status-badge" style="background:#eef">DLL</span></div>
                         <div class="info-grid">
                             <div><span class="label">ФАЙЛ</span><span class="val">${p.file_name}</span></div>
-                            <div class="text-right"><span class="label">РАЗМЕР</span><span class="val">${size} MB</span></div>
+                            <div class="text-right"><span class="label">РАЗМЕР</span><span class="val">${(p.file_size/1024/1024).toFixed(2)} MB</span></div>
                         </div>
-                        <button class="delete-btn" onclick="deleteProd('${p.name}')">УДАЛИТЬ ТОВАР</button>
                     </div>`;
             });
         }
@@ -289,14 +264,11 @@
     async function generateKey() {
         const name = document.getElementById('p-name').value;
         const days = document.getElementById('p-days').value;
-        if (!name) return alert("Введите имя продукта");
         const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) });
-        if (res && res.status === "ok") { document.getElementById('p-name').value = ''; refreshKeys(); }
-        else alert(res?.message || "Ошибка API");
+        if (res.status === "ok") { document.getElementById('p-name').value = ''; refreshKeys(); }
     }
 
-    async function deleteKey(k) { if(confirm('Удалить ключ навсегда?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
-    async function deleteProd(n) { if(confirm('Удалить продукт и все связанные ключи?')) { await apiRequest('/api/seller/delete-product','POST',{product_name:n}); refreshProds(); } }
+    async function deleteKey(k) { if(confirm('Удалить?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
 </script>
 </body>
 </html>
