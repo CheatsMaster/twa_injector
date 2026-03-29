@@ -5,13 +5,11 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler
 from upstash_redis import Redis
 
+# Подключение к Redis (универсальный поиск ключей)
 def get_redis():
-    # Ищем переменные STORAGE (как на твоем скриншоте) или стандартные KV
     url = os.environ.get("STORAGE_REST_API_URL") or os.environ.get("KV_REST_API_URL") or os.environ.get("UPSTASH_REDIS_REST_URL")
     token = os.environ.get("STORAGE_REST_API_TOKEN") or os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-    if not url or not token:
-        return None
-    return Redis(url=url, token=token)
+    return Redis(url=url, token=token) if url and token else None
 
 redis_client = get_redis()
 
@@ -31,7 +29,7 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             if not redis_client:
-                return self.send_json({"error": "Redis не подключен. Проверь вкладку Storage в Vercel"}, 500)
+                return self.send_json({"error": "Redis не подключен"}, 500)
 
             content_length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(content_length).decode('utf-8'))
@@ -40,16 +38,16 @@ class handler(BaseHTTPRequestHandler):
             password = body.get('password')
             
             if not password:
-                return self.send_json({"error": "Введите пароль"}, 401)
+                return self.send_json({"error": "Нужен пароль"}, 401)
 
-            # Регистрация
+            # 1. Регистрация (установка Secret Key)
             if action == 'register':
                 s_key = body.get('secret_key')
                 if not s_key: return self.send_json({"error": "Нужен Secret Key"}, 400)
                 redis_client.set(f"auth:{password}", s_key)
-                return self.send_json({"status": "ok"})
+                return self.send_json({"status": "ok", "message": "Пароль привязан"})
 
-            # Авторизация
+            # 2. Проверка пароля и получение Secret Key
             stored_secret = redis_client.get(f"auth:{password}")
             if not stored_secret:
                 return self.send_json({"error": "Неверный пароль"}, 401)
@@ -60,28 +58,33 @@ class handler(BaseHTTPRequestHandler):
             if action == 'login':
                 return self.send_json({"status": "ok"})
 
-            # Прокси к твоему серверу
-            path = body.get('path', '/api/seller/keys')
+            # 3. Прокси-запрос к твоему основному API (95.181...)
+            path = body.get('path')
             method = body.get('method', 'GET')
             payload = body.get('payload')
+            
             target_url = f"http://95.181.213.84:8081{path}"
             
-            encoded_data = json.dumps(payload).encode('utf-8') if payload and method == 'POST' else None
+            encoded_data = json.dumps(payload).encode('utf-8') if payload else None
 
             req = urllib.request.Request(
                 target_url,
                 data=encoded_data,
-                headers={'X-Seller-Key': str(stored_secret).strip(), 'Content-Type': 'application/json'},
+                headers={
+                    'X-Seller-Key': str(stored_secret).strip(),
+                    'Content-Type': 'application/json'
+                },
                 method=method
             )
 
             try:
-                with urllib.request.urlopen(req, timeout=10) as response:
+                with urllib.request.urlopen(req, timeout=15) as response:
                     return self.send_json(json.loads(response.read().decode('utf-8')))
             except urllib.error.HTTPError as e:
-                return self.send_json({"error": f"Ошибка сервера: {e.code}"}, e.code)
-            except Exception as e:
-                return self.send_json({"error": f"Ошибка соединения: {str(e)}"}, 502)
+                # Прокидываем ошибку от твоего сервера (например, 400 если ключ уже есть)
+                err_body = e.read().decode('utf-8')
+                try: return self.send_json(json.loads(err_body), e.code)
+                except: return self.send_json({"error": f"Сервер ответил {e.code}"}, e.code)
 
         except Exception as e:
             return self.send_json({"error": f"Ошибка прокси: {str(e)}"}, 500)
