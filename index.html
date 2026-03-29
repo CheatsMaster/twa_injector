@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: var(--tg-theme-bg-color, #ffffff);
+            --sec-bg: var(--tg-theme-secondary-bg-color, #f0f0f5);
+            --text: var(--tg-theme-text-color, #222);
+            --hint: var(--tg-theme-hint-color, #999);
+            --btn: var(--tg-theme-button-color, #2481cc);
+            --btn-txt: var(--tg-theme-button-text-color, #ffffff);
+        }
+        body { font-family: -apple-system, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding-bottom: 20px; }
+        .header { background: var(--bg); padding: 15px; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 10; }
+        .tabs { display: flex; background: var(--bg); margin-bottom: 10px; border-bottom: 1px solid #ddd; }
+        .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: bold; color: var(--hint); border-bottom: 2px solid transparent; }
+        .tab.active { color: var(--btn); border-bottom: 2px solid var(--btn); }
+        .container { padding: 10px; }
+        .card { background: var(--bg); border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .progress-container { height: 6px; background: #eee; border-radius: 3px; margin: 8px 0; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--btn); width: 0%; transition: width 0.3s; }
+        input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; background: var(--bg); color: var(--text); }
+        .key-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+        .key-text { font-family: monospace; font-weight: bold; font-size: 15px; color: var(--btn); }
+        .badge { font-size: 11px; padding: 3px 6px; border-radius: 4px; background: #f0f0f0; margin-top: 4px; display: inline-block; }
+        .badge.active { background: #e8f5e9; color: #2e7d32; }
+        .badge.new { background: #e3f2fd; color: #1976d2; }
+        .delete-btn { color: #ff3b30; border: none; background: none; font-size: 18px; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div style="font-size: 12px; color: var(--hint);">Хранилище: <span id="storage-txt">0/200 MB</span></div>
+    <div class="progress-container"><div id="storage-bar" class="progress-bar"></div></div>
+</div>
+
+<div class="tabs">
+    <div class="tab active" onclick="switchTab('keys')">🔑 КЛЮЧИ</div>
+    <div class="tab" onclick="switchTab('prods')">📦 ФАЙЛЫ</div>
+</div>
+
+<div id="tab-keys" class="container">
+    <div class="card">
+        <input type="text" id="gen-name" placeholder="Название продукта">
+        <input type="number" id="gen-days" value="30" placeholder="Дней">
+        <button onclick="generateKey()" style="width:100%; padding:12px; border-radius:10px; border:none; background:var(--btn); color:var(--btn-txt); font-weight:bold;">СОЗДАТЬ КЛЮЧ</button>
+    </div>
+    <input type="text" id="search" placeholder="🔍 Поиск по ключу..." oninput="filterKeys()" style="border:none;">
+    <div id="keys-list"></div>
+</div>
+
+<div id="tab-prods" class="container" style="display:none;">
+    <div id="prods-list"></div>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    async function api(path, method = 'GET', body = null) {
+        const r = await fetch('/api' + path, {
+            method,
+            headers: {'Content-Type': 'application/json'},
+            body: body ? JSON.stringify(body) : null
+        });
+        return await r.json();
+    }
+
+    function switchTab(t) {
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('tab-keys').style.display = t === 'keys' ? 'block' : 'none';
+        document.getElementById('tab-prods').style.display = t === 'prods' ? 'block' : 'none';
+        refresh();
+    }
+
+    async function refresh() {
+        // Загрузка продуктов и лимитов
+        const resP = await api('/products');
+        if (resP.status === 'ok') {
+            const cur = resP.limits.current_total_size / (1024*1024);
+            document.getElementById('storage-bar').style.width = (cur/200*100) + '%';
+            document.getElementById('storage-txt').innerText = cur.toFixed(2) + ' / 200 MB';
+            
+            const pList = document.getElementById('prods-list');
+            pList.innerHTML = '';
+            resP.products.forEach(p => {
+                pList.innerHTML += `<div class="card key-row">
+                    <div><b>${p.name}</b><br><small>${p.file_name} (${(p.file_size/1024).toFixed(1)} KB)</small></div>
+                    <button class="delete-btn" onclick="delProd('${p.name}')"><i class="fas fa-trash-alt"></i></button>
+                </div>`;
+            });
+        }
+
+        // Загрузка ключей
+        const resK = await api('/keys');
+        if (resK.status === 'ok') {
+            const kList = document.getElementById('keys-list');
+            kList.innerHTML = '';
+            resK.keys.reverse().forEach(k => {
+                const p = k.products[0] || {};
+                const isNew = !k.hwid;
+                kList.innerHTML += `<div class="card">
+                    <div class="key-row" onclick="copyKey('${k.license_key}')">
+                        <div style="flex:1">
+                            <span class="key-text">${k.license_key}</span><br>
+                            <span class="badge ${isNew ? 'new' : 'active'}">
+                                ${isNew ? 'Ожидает активации' : 'Активен'} | ${p.name || '???'}
+                            </span><br>
+                            <small style="color:var(--hint)">${formatTime(p.expires_at, p.days, k.hwid)}</small>
+                        </div>
+                        <button class="delete-btn" onclick="delKey('${k.license_key}')"><i class="fas fa-times-circle"></i></button>
+                    </div>
+                </div>`;
+            });
+        }
+    }
+
+    function formatTime(exp, days, hwid) {
+        if (!hwid) return `Срок: ${days} дн. (с момента входа)`;
+        const diff = exp - (Date.now()/1000);
+        if (diff <= 0) return "Срок истек";
+        return diff > 86400 ? Math.floor(diff/86400) + " дн. осталось" : "Меньше суток";
+    }
+
+    function copyKey(key) {
+        navigator.clipboard.writeText(key);
+        tg.HapticFeedback.notificationOccurred('success');
+        tg.showScanQrPopup({text: "Ключ скопирован в буфер!"}); 
+        setTimeout(() => tg.closeScanQrPopup(), 1000);
+    }
+
+    async function generateKey() {
+        const n = document.getElementById('gen-name').value;
+        const d = document.getElementById('gen-days').value;
+        if(!n) return alert("Имя продукта!");
+        await api('/generate-key', 'POST', {product_name: n, days: parseInt(d)});
+        refresh();
+    }
+
+    async function delKey(k) { if(confirm('Удалить ключ?')) { await api('/delete-key', 'POST', {license_key: k}); refresh(); } }
+    async function delProd(n) { if(confirm('Удалить файл?')) { await api('/delete-product', 'POST', {product_name: n}); refresh(); } }
+
+    function filterKeys() {
+        const val = document.getElementById('search').value.toLowerCase();
+        document.querySelectorAll('#keys-list .card').forEach(c => {
+            c.style.display = c.innerText.toLowerCase().includes(val) ? 'block' : 'none';
+        });
+    }
+
+    refresh();
+</script>
+</body>
+</html>
