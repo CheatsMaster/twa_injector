@@ -6,22 +6,38 @@
     <title>Amazing Fisher Admin</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg: #ffffff; --sec-bg: #f0f2f5; --text: #1a1a1a; --btn: #2481cc; --err: #e74c3c; --warn: #f39c12; }
+        :root { --bg: #ffffff; --sec-bg: #f0f2f5; --text: #1a1a1a; --btn: #2481cc; --err: #e74c3c; --ok: #27ae60; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 10px; }
         .card { background: var(--bg); border-radius: 14px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        
+        /* Auth Switch */
         .auth-modes { display: flex; background: #eee; border-radius: 10px; padding: 4px; margin-bottom: 15px; }
-        .mode-btn { flex: 1; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; background: none; color: #666; }
+        .mode-btn { flex: 1; border: none; padding: 8px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #666; background: none; }
         .mode-btn.active { background: #fff; color: var(--btn); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
-        .btn-main { width: 100%; background: var(--btn); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+
+        /* Tabs */
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #ddd; font-weight: bold; cursor: pointer; }
         .tab-btn.active { background: var(--btn); color: #fff; }
-        .hidden { display: none !important; }
-        .key-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
+        .btn-main { width: 100%; background: var(--btn); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        
+        .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
+        .f-btn { padding: 8px 15px; border-radius: 20px; border: 1px solid #ccc; background: #fff; font-size: 12px; white-space: nowrap; cursor: pointer; }
+        .f-btn.active { background: var(--text); color: #fff; }
+
+        #list-container, #prod-container { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 768px) { #list-container, #prod-container { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); } }
+
+        .item-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
         .key-code { font-family: monospace; font-weight: bold; color: var(--btn); }
+        .info-row { display: flex; justify-content: space-between; border-top: 1px solid #f9f9f9; padding-top: 8px; margin-top: 5px; }
         .label { color: #999; font-size: 10px; text-transform: uppercase; }
-        .hwid-box { background: #f8f9fa; padding: 8px; border-radius: 6px; font-size: 10px; word-break: break-all; border: 1px dashed #ddd; }
+        .val { font-size: 13px; font-weight: 600; }
+        .hwid-box { background: #f8f9fa; padding: 6px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #666; word-break: break-all; border: 1px dashed #ddd; }
+        .del-btn { color: var(--err); background: #fff5f5; border: 1px solid #ffdada; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -29,7 +45,7 @@
 <div class="container">
     <div id="auth-screen">
         <div class="card" style="max-width: 400px; margin: 40px auto;">
-            <h3 style="text-align:center">🛡️ Доступ</h3>
+            <h3 style="text-align:center">🛡️ Вход в панель</h3>
             <div class="auth-modes">
                 <button id="m-login" class="mode-btn active" onclick="setAuthMode('login')">ВХОД</button>
                 <button id="m-reg" class="mode-btn" onclick="setAuthMode('reg')">РЕГИСТРАЦИЯ</button>
@@ -47,28 +63,41 @@
             <button class="tab-btn active" id="tk-btn" onclick="switchTab('keys')">КЛЮЧИ</button>
             <button class="tab-btn" id="tp-btn" onclick="switchTab('prods')">ПРОДУКТЫ</button>
         </div>
+
         <div id="tab-keys">
+            <div class="card">
+                <h4>➕ Создать ключ</h4>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="p-name" placeholder="Название продукта">
+                    <input type="number" id="p-days" value="30" style="width: 80px;">
+                </div>
+                <button class="btn-main" onclick="generateKey()">ГЕНЕРИРОВАТЬ</button>
+            </div>
+            <div class="filters">
+                <button class="f-btn active" onclick="setFilter('all', this)">Все</button>
+                <button class="f-btn" onclick="setFilter('free', this)">Свободные</button>
+                <button class="f-btn" onclick="setFilter('active', this)">Активные</button>
+            </div>
             <div id="list-container">Загрузка...</div>
         </div>
+
         <div id="tab-prods" class="hidden">
             <div id="prod-container"></div>
         </div>
-        <button class="btn-main" style="background:#666; margin-top:20px;" onclick="logout()">ВЫЙТИ</button>
+        
+        <button class="btn-main" style="background:#666; margin-top:30px;" onclick="logout()">ВЫЙТИ</button>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    const tgId = tg.initDataUnsafe?.user?.id || "dev_id";
+    const tgId = tg.initDataUnsafe?.user?.id || "dev_user";
     const storageKey = 'fisher_p_' + tgId;
     let userPass = localStorage.getItem(storageKey);
     let authMode = 'login';
+    let allKeys = [];
 
-    window.onload = () => {
-        if (userPass) {
-            checkAuth();
-        }
-    };
+    window.onload = () => { if (userPass) checkSession(); };
 
     function setAuthMode(mode) {
         authMode = mode;
@@ -77,10 +106,21 @@
         document.getElementById('m-reg').classList.toggle('active', mode === 'reg');
     }
 
-    async function checkAuth() {
+    async function handleAuth() {
+        const pass = document.getElementById('auth-pass').value;
+        const secret = document.getElementById('reg-key').value;
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: authMode === 'reg'?'register':'login', password: pass, tg_id: tgId, secret_key: secret })
+        });
+        if (res.ok) { localStorage.setItem(storageKey, pass); userPass = pass; showMain(); }
+        else { const d = await res.json(); alert(d.error || "Ошибка доступа"); }
+    }
+
+    async function checkSession() {
         const res = await apiRequest('/api/seller/products');
-        if (res && !res.error) showMain();
-        else logout();
+        if (res && !res.error) showMain(); else logout();
     }
 
     function showMain() {
@@ -89,88 +129,79 @@
         refreshKeys();
     }
 
-    function logout() {
-        localStorage.removeItem(storageKey);
-        location.reload();
-    }
-
-    async function handleAuth() {
-        const pass = document.getElementById('auth-pass').value;
-        const secret = document.getElementById('reg-key').value;
-        if (!pass) return alert("Введите пароль");
-
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: authMode === 'reg' ? 'register' : 'login', 
-                    password: pass, 
-                    tg_id: tgId, 
-                    secret_key: secret 
-                })
-            });
-
-            if (res.ok) {
-                localStorage.setItem(storageKey, pass);
-                userPass = pass;
-                showMain();
-            } else {
-                const errData = await res.json();
-                alert("Ошибка сервера: " + (errData.error || "неизвестно"));
-            }
-        } catch (e) {
-            alert("Критическая ошибка сети или сервера (500). Проверьте логи Vercel.");
-        }
-    }
+    function logout() { localStorage.removeItem(storageKey); location.reload(); }
 
     async function apiRequest(path, method = 'GET', body = null) {
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: userPass, tg_id: tgId, path: path, method: method, payload: body })
-            });
-            if (res.status === 401) return { error: "unauth" };
-            return await res.json();
-        } catch (e) { return { error: "network" }; }
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: userPass, tg_id: tgId, path: path, method: method, payload: body })
+        });
+        if (res.status === 401) return { error: "unauth" };
+        return await res.json();
     }
 
-    function switchTab(tab) {
-        document.getElementById('tab-keys').classList.toggle('hidden', tab !== 'keys');
-        document.getElementById('tab-prods').classList.toggle('hidden', tab !== 'prods');
-        document.getElementById('tk-btn').classList.toggle('active', tab === 'keys');
-        document.getElementById('tp-btn').classList.toggle('active', tab === 'prods');
-        if (tab === 'prods') refreshProds();
+    function switchTab(t) {
+        document.getElementById('tab-keys').classList.toggle('hidden', t !== 'keys');
+        document.getElementById('tab-prods').classList.toggle('hidden', t !== 'prods');
+        document.getElementById('tk-btn').classList.toggle('active', t === 'keys');
+        document.getElementById('tp-btn').classList.toggle('active', t === 'prods');
+        if (t === 'prods') refreshProds();
     }
 
     async function refreshKeys() {
-        const container = document.getElementById('list-container');
         const res = await apiRequest('/api/seller/keys');
-        if (res && res.status === "ok") {
-            container.innerHTML = '';
-            res.keys.slice().reverse().forEach(k => {
-                container.innerHTML += `
-                    <div class="key-card">
-                        <div class="key-code">${k.license_key}</div>
-                        <div class="label">HWID</div>
-                        <div class="hwid-box">${k.hwid || 'НЕТ ПРИВЯЗКИ'}</div>
-                    </div>`;
+        if (res?.status === "ok") { allKeys = res.keys; renderKeys('all'); }
+    }
+
+    function renderKeys(f) {
+        const c = document.getElementById('list-container');
+        c.innerHTML = '';
+        let list = allKeys.slice().reverse();
+        if (f === 'free') list = list.filter(k => !k.hwid);
+        if (f === 'active') list = list.filter(k => k.is_active);
+        
+        list.forEach(k => {
+            const prod = k.products[0];
+            c.innerHTML += `<div class="item-card">
+                <div class="key-code">${k.license_key}</div>
+                <div class="info-row">
+                    <div><span class="label">ПРОДУКТ</span><div class="val">${prod?prod.name:'---'}</div></div>
+                    <div style="text-align:right"><span class="label">СТАТУС</span><div class="val" style="color:${k.is_active?'var(--ok)':'#999'}">${k.is_active?'ACTIVE':'READY'}</div></div>
+                </div>
+                <div><span class="label">HWID</span><div class="hwid-box">${k.hwid || 'СВОБОДЕН'}</div></div>
+                <button class="del-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ КЛЮЧ</button>
+            </div>`;
+        });
+    }
+
+    async function refreshProds() {
+        const c = document.getElementById('prod-container');
+        c.innerHTML = 'Загрузка...';
+        const res = await apiRequest('/api/seller/products');
+        if (res?.products) {
+            c.innerHTML = '';
+            res.products.forEach(p => {
+                c.innerHTML += `<div class="item-card">
+                    <b>${p.name}</b>
+                    <div class="info-row">
+                        <span class="val">${p.file_name}</span>
+                        <span class="val">${(p.file_size/1024/1024).toFixed(2)} MB</span>
+                    </div>
+                </div>`;
             });
         }
     }
 
-    async function refreshProds() {
-        const container = document.getElementById('prod-container');
-        container.innerHTML = 'Загрузка...';
-        const res = await apiRequest('/api/seller/products');
-        if (res && res.products) {
-            container.innerHTML = '';
-            res.products.forEach(p => {
-                container.innerHTML += `<div class="key-card"><b>${p.name}</b><br><small>${p.file_name}</small></div>`;
-            });
-        }
+    async function generateKey() {
+        const n = document.getElementById('p-name').value;
+        const d = document.getElementById('p-days').value;
+        const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: n, days: parseInt(d) });
+        if (res.status === "ok") { document.getElementById('p-name').value=''; refreshKeys(); }
     }
+
+    async function deleteKey(k) { if(confirm('Удалить?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
+    function setFilter(f, b) { document.querySelectorAll('.f-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderKeys(f); }
 </script>
 </body>
 </html>
