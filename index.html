@@ -10,145 +10,209 @@
             --bg: #ffffff; --sec-bg: #f0f2f5; --text: #1a1a1a; 
             --btn: #2481cc; --err: #e74c3c; --ok: #27ae60; --warn: #f39c12;
         }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 15px; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--sec-bg); color: var(--text); margin: 0; padding: 10px; }
         .container { max-width: 1100px; margin: 0 auto; }
-        .card { background: var(--bg); border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        h3, h4 { margin: 0 0 15px 0; color: #333; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
-        .btn-main { width: 100%; background: var(--btn); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        #list-container { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        @media (min-width: 768px) { #list-container { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); } }
-        .key-card { background: #fff; border: 1px solid #eee; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+        .card { background: var(--bg); border-radius: 14px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        
+        /* Табы */
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #ddd; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { background: var(--btn); color: #fff; }
+
+        /* Фильтры */
+        .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
+        .f-btn { padding: 6px 12px; border-radius: 20px; border: 1px solid #ccc; background: #fff; font-size: 12px; white-space: nowrap; cursor: pointer; }
+        .f-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
+        .btn-main { width: 100%; background: var(--btn); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        
+        #list-container, #prod-container { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 768px) {
+            #list-container, #prod-container { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+        }
+
+        .key-card, .prod-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .header-row { display: flex; justify-content: space-between; align-items: center; }
-        .key-code { font-family: 'Courier New', monospace; font-weight: bold; font-size: 14px; color: var(--btn); }
-        .status-badge { font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 800; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid #f9f9f9; padding-top: 12px; }
-        .label { color: #999; display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; }
+        .key-code { font-family: monospace; font-weight: bold; color: var(--btn); }
+        .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid #f5f5f5; padding-top: 10px; }
+        .label { color: #999; display: block; font-size: 10px; text-transform: uppercase; }
         .val { font-size: 13px; font-weight: 600; }
-        .hwid-box { background: #f8f9fa; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; color: #666; word-break: break-all; border: 1px dashed #ddd; }
-        .delete-btn { background: #fff5f5; color: var(--err); border: 1px solid #ffdada; padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; }
+
+        .hwid-box { background: #f8f9fa; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #666; word-break: break-all; border: 1px dashed #ddd; }
+        .delete-btn { background: #fff5f5; color: var(--err); border: 1px solid #ffdada; padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        
+        .hidden { display: none !important; }
         .text-right { text-align: right; }
     </style>
 </head>
 <body>
+
 <div class="container">
     <div id="auth-screen" style="display: none;">
         <div class="card" style="max-width: 400px; margin: auto;">
-            <h3 style="text-align:center">🔑 Admin Access</h3>
-            <input type="text" id="reg-key" placeholder="Secret Key (первый раз)">
-            <input type="password" id="auth-pass" placeholder="Пароль">
+            <h3 style="text-align:center">🛡️ Admin Access</h3>
+            <input type="password" id="auth-pass" placeholder="Введите пароль">
             <button class="btn-main" onclick="handleAuth()">ВОЙТИ</button>
         </div>
     </div>
+
     <div id="main-content" style="display: none;">
-        <div class="card">
-            <h4>➕ Создать лицензию</h4>
-            <div style="display: grid; grid-template-columns: 1fr 100px; gap: 10px;">
-                <input type="text" id="p-name" placeholder="Продукт">
-                <input type="number" id="p-days" value="30">
-            </div>
-            <button id="gen-btn" class="btn-main" onclick="generateKey()" style="margin-top:10px;">ГЕНЕРИРОВАТЬ</button>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('keys')">КЛЮЧИ</button>
+            <button class="tab-btn" onclick="switchTab('prods')">ПРОДУКТЫ</button>
         </div>
-        <h4>📋 Список ключей</h4>
-        <div id="list-container">Загрузка...</div>
+
+        <div id="tab-keys">
+            <div class="card">
+                <h4>➕ Создать лицензию</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="p-name" placeholder="Продукт">
+                    <input type="number" id="p-days" value="30" style="width: 80px;">
+                </div>
+                <button class="btn-main" onclick="generateKey()" style="margin-top:5px;">ГЕНЕРИРОВАТЬ</button>
+            </div>
+
+            <div class="filters">
+                <button class="f-btn active" onclick="setFilter('all', this)">Все</button>
+                <button class="f-btn" onclick="setFilter('free', this)">Свободные</button>
+                <button class="f-btn" onclick="setFilter('active', this)">Активные</button>
+            </div>
+            <div id="list-container">Загрузка...</div>
+        </div>
+
+        <div id="tab-prods" class="hidden">
+            <div class="card">
+                <h4>📦 Добавить продукт</h4>
+                <input type="text" id="new-prod-name" placeholder="Название (уникальное)">
+                <p style="font-size: 11px; color: #666;">* Файлы загружаются через основной сервер. Здесь управление списком.</p>
+                <button class="btn-main" onclick="alert('Для загрузки .dll используйте прямой метод upload-product (через Python или Postman)')">ИНФО ПО ЗАГРУЗКЕ</button>
+            </div>
+            <div id="prod-container">Загрузка...</div>
+        </div>
     </div>
 </div>
 
 <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
     let userPass = localStorage.getItem('app_p');
+    let allKeys = [];
+    let currentFilter = 'all';
 
-    window.onload = function() {
+    window.onload = () => {
         if (!userPass) document.getElementById('auth-screen').style.display = 'flex';
         else showMain();
     };
 
+    function switchTab(tab) {
+        document.getElementById('tab-keys').classList.toggle('hidden', tab !== 'keys');
+        document.getElementById('tab-prods').classList.toggle('hidden', tab !== 'prods');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText.toLowerCase().includes(tab === 'keys' ? 'ключи' : 'продукт')));
+        if (tab === 'prods') refreshProds();
+    }
+
     async function apiRequest(path, method = 'GET', body = null) {
-        try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: userPass, path: path, method: method, payload: body })
-            });
-            const data = await res.json();
-            if (res.status === 401) { localStorage.removeItem('app_p'); location.reload(); }
-            return data;
-        } catch (e) { return { status: "error" }; }
+        const res = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: userPass, path: path, method: method, payload: body })
+        });
+        return await res.json();
     }
 
     async function handleAuth() {
         const pass = document.getElementById('auth-pass').value;
-        const key = document.getElementById('reg-key').value;
-        if (!pass) return;
         const res = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: key ? 'register' : 'login', password: pass, secret_key: key })
+            body: JSON.stringify({ action: 'login', password: pass })
         });
         if (res.ok) { localStorage.setItem('app_p', pass); userPass = pass; showMain(); }
-        else alert("Ошибка входа!");
+        else alert("Ошибка!");
     }
 
     function showMain() {
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
-        refresh();
+        refreshKeys();
     }
 
-    async function refresh() {
-        const container = document.getElementById('list-container');
-        const res = await apiRequest('/api/seller/keys');
-        if (res && res.status === "ok" && Array.isArray(res.keys)) {
-            container.innerHTML = '';
-            res.keys.slice().reverse().forEach(function(k) {
-                const key = k.license_key || "N/A";
-                const hwid = k.hwid || "ОЖИДАЕТ ПРИВЯЗКИ";
-                const badgeStyle = k.is_active ? 'background:#e6f4ea; color:#1e7e34;' : 'background:#fce8e6; color:#d93025;';
-                const dateStr = k.created ? new Date(k.created * 1000).toLocaleDateString() : "---";
-                
-                let timeStr = "---";
-                let timeColor = "color: var(--text)";
-                
-                // ЛОГИКА ВРЕМЕНИ:
-                const prod = k.products && k.products[0];
-                if (prod) {
-                    if (prod.expires_at && prod.expires_at > 0) {
-                        // Если ключ уже активирован
-                        const now = Math.floor(Date.now() / 1000);
-                        const diff = prod.expires_at - now;
-                        if (diff <= 0) {
-                            timeStr = "ИСТЕК";
-                            timeColor = "color: var(--err)";
-                        } else if (diff < 86400) {
-                            timeStr = Math.floor(diff / 3600) + "ч " + Math.floor((diff % 3600) / 60) + "м";
-                            timeColor = "color: var(--warn)";
-                        } else {
-                            timeStr = Math.floor(diff / 86400) + " дн.";
-                        }
-                    } else {
-                        // Если еще не активирован - берем duration_days
-                        const dDays = prod.duration_days || k.duration_days || 0;
-                        timeStr = dDays + " дн. (запас)";
-                        timeColor = "color: var(--ok)";
-                    }
-                }
+    function setFilter(f, btn) {
+        currentFilter = f;
+        document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderKeys();
+    }
 
-                container.innerHTML += '<div class="key-card">' +
-                    '<div class="header-row">' +
-                        '<span class="key-code">' + key + '</span>' +
-                        '<span class="status-badge" style="' + badgeStyle + '">' + (k.is_active ? "ACTIVE" : "OFF") + '</span>' +
-                    '</div>' +
-                    '<div class="info-grid">' +
-                        '<div><span class="label">Создан</span><span class="val">' + dateStr + '</span></div>' +
-                        '<div class="text-right"><span class="label">Остаток</span><span class="val" style="' + timeColor + '">' + timeStr + '</span></div>' +
-                    '</div>' +
-                    '<div>' +
-                        '<span class="label">HWID</span>' +
-                        '<div class="hwid-box">' + hwid + '</div>' +
-                    '</div>' +
-                    '<button class="delete-btn" onclick="deleteKey(\'' + key + '\')">УДАЛИТЬ КЛЮЧ</button>' +
-                '</div>';
+    async function refreshKeys() {
+        const res = await apiRequest('/api/seller/keys');
+        if (res && res.status === "ok") {
+            allKeys = res.keys;
+            renderKeys();
+        }
+    }
+
+    function renderKeys() {
+        const container = document.getElementById('list-container');
+        container.innerHTML = '';
+        
+        let filtered = allKeys.slice().reverse();
+        if (currentFilter === 'free') filtered = filtered.filter(k => !k.hwid);
+        if (currentFilter === 'active') filtered = filtered.filter(k => k.is_active);
+
+        filtered.forEach(k => {
+            const prod = k.products && k.products[0];
+            const hwid = k.hwid || "ОЖИДАЕТ ПРИВЯЗКИ";
+            const prodName = prod ? prod.name : "Нет продукта";
+            
+            let timeStr = "---";
+            let timeColor = "";
+            if (prod && prod.expires_at) {
+                const diff = prod.expires_at - Math.floor(Date.now()/1000);
+                if (diff <= 0) { timeStr = "ИСТЕК"; timeColor = "color:var(--err)"; }
+                else if (diff < 86400) timeStr = Math.floor(diff/3600)+"ч "+Math.floor((diff%3600)/60)+"м";
+                else timeStr = Math.floor(diff/86400)+" дн.";
+            } else {
+                timeStr = (prod ? prod.duration_days : (k.duration_days || 0)) + " дн. (запас)";
+                timeColor = "color:var(--ok)";
+            }
+
+            container.innerHTML += `
+                <div class="key-card">
+                    <div class="header-row">
+                        <span class="key-code">${k.license_key}</span>
+                        <span class="status-badge" style="background:${k.is_active ? '#e6f4ea;color:#1e7e34':'#f5f5f5;color:#888'}">
+                            ${k.is_active ? 'ACTIVE' : 'READY'}
+                        </span>
+                    </div>
+                    <div class="info-grid">
+                        <div><span class="label">ПРОДУКТ</span><b class="val">${prodName}</b></div>
+                        <div class="text-right"><span class="label">СРОК</span><b class="val" style="${timeColor}">${timeStr}</b></div>
+                    </div>
+                    <div><span class="label">HWID</span><div class="hwid-box">${hwid}</div></div>
+                    <button class="delete-btn" onclick="deleteKey('${k.license_key}')">УДАЛИТЬ</button>
+                </div>`;
+        });
+    }
+
+    async function refreshProds() {
+        const container = document.getElementById('prod-container');
+        container.innerHTML = 'Загрузка...';
+        const res = await apiRequest('/api/seller/products');
+        if (res && res.products) {
+            container.innerHTML = '';
+            res.products.forEach(p => {
+                const size = (p.file_size / 1024 / 1024).toFixed(2);
+                container.innerHTML += `
+                    <div class="prod-card">
+                        <div class="header-row"><b>${p.name}</b> <span class="status-badge" style="background:#eef">${p.is_active ? 'ON':'OFF'}</span></div>
+                        <div class="info-grid">
+                            <div><span class="label">ФАЙЛ</span><span class="val">${p.file_name}</span></div>
+                            <div class="text-right"><span class="label">РАЗМЕР</span><span class="val">${size} MB</span></div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteProd('${p.name}')">УДАЛИТЬ ПРОДУКТ</button>
+                    </div>`;
             });
         }
     }
@@ -156,20 +220,12 @@
     async function generateKey() {
         const name = document.getElementById('p-name').value;
         const days = document.getElementById('p-days').value;
-        if (!name) return alert("Введите название!");
-        const btn = document.getElementById('gen-btn');
-        btn.disabled = true;
         const res = await apiRequest('/api/seller/generate-key', 'POST', { product_name: name, days: parseInt(days) });
-        btn.disabled = false;
-        if (res && res.status === "ok") { document.getElementById('p-name').value = ''; refresh(); }
+        if (res.status === "ok") refreshKeys(); else alert(res.message);
     }
 
-    async function deleteKey(k) {
-        if (confirm("Удалить ключ " + k + "?")) {
-            const res = await apiRequest('/api/seller/delete-key', 'POST', { license_key: k });
-            if (res && res.status === "ok") refresh();
-        }
-    }
+    async function deleteKey(k) { if(confirm('Удалить ключ?')) { await apiRequest('/api/seller/delete-key','POST',{license_key:k}); refreshKeys(); } }
+    async function deleteProd(n) { if(confirm('Удалить продукт? Все ключи к нему перестанут работать!')) { await apiRequest('/api/seller/delete-product','POST',{product_name:n}); refreshProds(); } }
 </script>
 </body>
 </html>
